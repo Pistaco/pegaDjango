@@ -18,11 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from app.admin import bodeguero_admin_site
 from rest_framework import routers
-
+from rest_framework.authtoken.views import obtain_auth_token
 
 
 urlpatterns = [
         path('admin/', admin.site.urls),
         path('bodeguero', bodeguero_admin_site.urls),
-        path('api/', include('app.urls'))
+        path('api/', include('app.urls')),
+        path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
 ]

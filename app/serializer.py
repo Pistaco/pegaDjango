@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Cargo, Producto, Ingreso, Retiro, Usuario
+from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual
+
 
 class CargoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,6 +13,11 @@ class ProductoSerializer(serializers.ModelSerializer):
         model = Producto
         fields = '__all__'
 
+class ProductoStockSerializer(serializers.ModelSerializer):
+    stock = serializers.IntegerField(source='stock.cantidad', read_only=True)
+    class Meta:
+        model = Producto
+        fields = '__all__'
 
 class IngresoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,4 +34,9 @@ class RetiroSerializer(serializers.ModelSerializer):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
+        fields = '__all__'
+
+class StockActualSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StockActual
         fields = '__all__'

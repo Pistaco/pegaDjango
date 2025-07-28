@@ -1,13 +1,16 @@
 from django.contrib import admin
 from django.contrib.admin import AdminSite
 
-from app.models import Producto, Ingreso, Retiro
+from app.models import Producto, Ingreso, Retiro, StockActual
 
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
     pass
 
+@admin.register(StockActual)
+class StockActualAdmin(admin.ModelAdmin):
+    pass
 
 @admin.register(Ingreso)
 class IngresoAdmin(admin.ModelAdmin):

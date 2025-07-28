@@ -124,17 +124,23 @@ class Producto(models.Model):
     centro_costo = models.CharField(max_length=100, blank=True, null=True)
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, null=True)
-    stock_actual = models.IntegerField()
     created_at = models.DateTimeField(blank=True, null=True)
     precio = models.IntegerField()
 
 
+
     class Meta:
-        managed = False
+        managed = True
         db_table = 'producto'
 
     def get_total(self):
         return sum(obj.precio for obj in Producto.objects.all())
+
+class StockActual(models.Model):
+    producto = models.OneToOneField(Producto, on_delete=models.CASCADE, related_name="stock")
+    cantidad = models.IntegerField()
+    actualizado_en = models.DateTimeField(auto_now=True)
+
 
 class Ingreso(models.Model):
     id_producto = models.ForeignKey('Producto', models.DO_NOTHING, db_column='id_producto')
