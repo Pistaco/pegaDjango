@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.admin import AdminSite
 
-from app.models import Producto, Ingreso, Retiro, StockActual
+from app.models import Producto, Ingreso, Retiro, StockActual, PDFUpload, ExcelUpload
 
 
 @admin.register(Producto)
@@ -31,3 +31,13 @@ class BodegueroAdminSite(AdminSite):
 bodeguero_admin_site = BodegueroAdminSite(name='admin_bodeguero')
 bodeguero_admin_site.register(Ingreso)
 bodeguero_admin_site.register(Retiro)
+
+
+@admin.register(PDFUpload)
+class PDFUploadAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(ExcelUpload)
+class ExcelUploadAdmin(admin.ModelAdmin):
+    pass

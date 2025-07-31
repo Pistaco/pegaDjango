@@ -14,16 +14,22 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
+
+from DjangoProject import settings
 from app.admin import bodeguero_admin_site
 from rest_framework import routers
 from rest_framework.authtoken.views import obtain_auth_token
 
+from app.views import CurrentUserGroupView, PDFUploadView, ExcelUploadView
 
 urlpatterns = [
         path('admin/', admin.site.urls),
-        path('bodeguero', bodeguero_admin_site.urls),
         path('api/', include('app.urls')),
+        path('api/user-groups/', CurrentUserGroupView.as_view(), name='user-groups'),
         path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
+        path('api/upload-pdf/', PDFUploadView.as_view(), name='upload_pdf'),
+        path("api/upload-excel/", ExcelUploadView.as_view(), name="upload_excel"),
 ]

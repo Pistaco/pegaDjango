@@ -5,6 +5,8 @@
 #   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
+import os
+
 from django.db import models
 
 
@@ -124,7 +126,7 @@ class Producto(models.Model):
     centro_costo = models.CharField(max_length=100, blank=True, null=True)
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     precio = models.IntegerField()
 
 
@@ -143,8 +145,8 @@ class StockActual(models.Model):
 
 
 class Ingreso(models.Model):
-    id_producto = models.ForeignKey('Producto', models.DO_NOTHING, db_column='id_producto')
-    id_usuario = models.ForeignKey('Usuario', models.DO_NOTHING, db_column='id_usuario')
+    id_producto = models.ForeignKey('Producto', models.CASCADE, db_column='id_producto')
+    id_usuario = models.ForeignKey('Usuario', models.CASCADE, db_column='id_usuario')
     cantidad = models.IntegerField()
     fecha = models.DateTimeField()
     observacion = models.TextField(blank=True, null=True)
@@ -154,8 +156,8 @@ class Ingreso(models.Model):
         db_table = 'ingreso'
 
 class Retiro(models.Model):
-    id_producto = models.ForeignKey(Producto, models.DO_NOTHING, db_column='id_producto')
-    id_usuario = models.ForeignKey('Usuario', models.DO_NOTHING, db_column='id_usuario')
+    id_producto = models.ForeignKey(Producto, models.CASCADE, db_column='id_producto')
+    id_usuario = models.ForeignKey('Usuario', models.CASCADE, db_column='id_usuario')
     cantidad = models.IntegerField()
     fecha = models.DateTimeField()
     observacion = models.TextField(blank=True, null=True)
@@ -163,6 +165,7 @@ class Retiro(models.Model):
     class Meta:
         managed = False
         db_table = 'retiro'
+
 
 
 class Usuario(models.Model):
@@ -175,4 +178,24 @@ class Usuario(models.Model):
     class Meta:
         managed = False
         db_table = 'usuario'
+
+class PDFUpload(models.Model):
+    archivo = models.FileField(upload_to='pdfs/')
+    fecha_subida = models.DateTimeField(auto_now_add=True)
+    
+    def delete(self, *args, **kwargs):
+        if self.archivo:
+            if os.path.isfile(self.archivo.path):
+                os.remove(self.archivo.path)
+        super().delete(*args, **kwargs)
+
+class ExcelUpload(models.Model):
+    archivo = models.FileField(upload_to='excels/')
+    fecha_subida = models.DateTimeField(auto_now_add=True)
+
+    def delete(self, *args, **kwargs):
+        if self.archivo:
+            if os.path.isfile(self.archivo.path):
+                os.remove(self.archivo.path)
+        super().delete(*args, **kwargs)
 
