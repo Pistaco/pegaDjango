@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload
 
@@ -65,3 +66,7 @@ class ExcelUploadSerializer(serializers.ModelSerializer):
         fields = ['id', 'archivo']
 
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username']  # No 'password', 'email', etc.

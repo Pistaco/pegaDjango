@@ -1,14 +1,21 @@
+import io
 import os
 import uuid
 
+import barcode
 import camelot
-from django.http import FileResponse, Http404
+import qrcode
+from barcode.writer import ImageWriter
+from django.contrib.auth.models import User
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import render
+from django_filters.rest_framework import DjangoFilterBackend
 from openpyxl.reader.excel import load_workbook
 
 # Create your views here.
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, filters
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import permission_classes, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,7 +23,7 @@ from rest_framework.views import APIView
 from DjangoProject import settings
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload
 from .serializer import CargoSerializer, ProductoSerializer, IngresoSerializer, RetiroSerializer, UsuarioSerializer, \
-    StockActualSerializer, ProductoStockSerializer, PDFUploadSerializer, ExcelUploadSerializer
+    StockActualSerializer, ProductoStockSerializer, PDFUploadSerializer, ExcelUploadSerializer, UserSerializer
 
 
 class BodegueroNOT(permissions.BasePermission):
@@ -38,6 +45,10 @@ class CurrentUserGroupView(APIView):
         print(groups)
         return Response({"groups": groups})
 
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 class CargoViewSet(viewsets.ModelViewSet):
     queryset = Cargo.objects.all()
     serializer_class = CargoSerializer
@@ -46,12 +57,15 @@ class CargoViewSet(viewsets.ModelViewSet):
 class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
-    permission_classes = [BodegueroNOT]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    ordering = ['id']
+    ordering_fields = ['nombre', 'codigo_barras']
+    filterset_fields = ['codigo_barras', 'nombre', 'id']
+    search_fields = ['nombre', 'codigo_barras', 'descripcion']
 
 class ProductoStockViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.select_related('stock').all()
     serializer_class = ProductoStockSerializer
-    permission_classes = [BodegueroNOT]
 class IngresoViewSet(viewsets.ModelViewSet):
     queryset = Ingreso.objects.all()
     serializer_class = IngresoSerializer
@@ -65,12 +79,10 @@ class RetiroViewSet(viewsets.ModelViewSet):
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
-    permission_classes = [BodegueroNOT]
 
 class StockViewSet(viewsets.ModelViewSet):
     queryset = StockActual.objects.all()
     serializer_class = StockActualSerializer
-    permission_classes = [BodegueroNOT]
 
 
 class PDFUploadView(APIView):
@@ -156,3 +168,43 @@ class ExcelUploadView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def barcode_image_on_demand(request, pk):
+    try:
+        producto = Producto.objects.get(pk=pk)
+    except Producto.DoesNotExist:
+        return HttpResponse("Producto no encontrado", status=404)
+
+    barcode_class = barcode.get_barcode_class('code128')
+    buffer = io.BytesIO()
+    barcode_class(producto.codigo_barras, writer=ImageWriter()).write(buffer)
+
+    return HttpResponse(
+        buffer.getvalue(),
+        content_type="image/png",
+        headers={
+            'Content-Disposition': f'attachment; filename="{producto.codigo_barras}.png"'
+        }
+    )
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def sqr_image_on_demand(request, pk):
+    try:
+        producto = Producto.objects.get(pk=pk)
+    except Producto.DoesNotExist:
+        return HttpResponse("Producto no encontrado", status=404)
+
+    qr = qrcode.make(producto.codigo_barras)
+    buffer = io.BytesIO()
+    qr.save(buffer, format='PNG')
+
+    return HttpResponse(
+        buffer.getvalue(),
+        content_type="image/png",
+        headers={
+            'Content-Disposition': f'attachment; filename="{producto.codigo_barras}.png"'
+        }
+    )

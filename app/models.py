@@ -9,6 +9,8 @@ import os
 
 from django.db import models
 
+from django.conf import settings
+
 
 class AuthGroup(models.Model):
     name = models.CharField(unique=True, max_length=150)
@@ -146,7 +148,7 @@ class StockActual(models.Model):
 
 class Ingreso(models.Model):
     id_producto = models.ForeignKey('Producto', models.CASCADE, db_column='id_producto')
-    id_usuario = models.ForeignKey('Usuario', models.CASCADE, db_column='id_usuario')
+    id_usuario = models.ForeignKey(settings.AUTH_USER_MODEL, models.CASCADE, db_column='id_usuario')
     cantidad = models.IntegerField()
     fecha = models.DateTimeField()
     observacion = models.TextField(blank=True, null=True)
@@ -157,7 +159,7 @@ class Ingreso(models.Model):
 
 class Retiro(models.Model):
     id_producto = models.ForeignKey(Producto, models.CASCADE, db_column='id_producto')
-    id_usuario = models.ForeignKey('Usuario', models.CASCADE, db_column='id_usuario')
+    id_usuario = models.ForeignKey(settings.AUTH_USER_MODEL, models.CASCADE, db_column='id_usuario')
     cantidad = models.IntegerField()
     fecha = models.DateTimeField()
     observacion = models.TextField(blank=True, null=True)
