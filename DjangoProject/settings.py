@@ -112,8 +112,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'pega',
         'USER': 'ignacio',
-        'PASSWORD': 'coloma30',
-        'HOST': 'localhost',  # o la IP/URL de tu servidor
+        'PASSWORD': 'v2r4n3c1h',
+        'HOST': '127.0.0.1',  # o la IP/URL de tu servidor
         'PORT': '5432',
     }
 }
