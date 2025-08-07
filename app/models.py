@@ -6,7 +6,9 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 import os
+import uuid
 
+from django.contrib.auth.models import User
 from django.db import models
 
 from django.conf import settings
@@ -113,6 +115,35 @@ class DjangoSession(models.Model):
         managed = False
         db_table = 'django_session'
 
+class Familia(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+    descripcion = models.TextField(blank=True, null=True)
+    padre = models.ForeignKey(
+        'self',
+        null=True, blank=True,
+        on_delete=models.CASCADE,
+        related_name='subfamilias',
+        help_text='Familia padre en caso de ser subcategoría.'
+    )
+    class Meta:
+        managed = False
+        db_table = 'familia'
+        verbose_name = 'Familia'
+        verbose_name_plural = 'Familias'
+
+    def __str__(self):
+        return self.nombre
+
+    def get_ruta_completa(self):
+        ruta = [self.nombre]
+        padre = self.padre
+        while padre:
+            ruta.insert(0, padre.nombre)
+            padre = padre.padre
+        return " > ".join(ruta)
+
+    def __str__(self):
+        return self.nombre
 
 
 class Cargo(models.Model):
@@ -124,12 +155,18 @@ class Cargo(models.Model):
         db_table = 'cargo'
 
 class Producto(models.Model):
-    codigo_barras = models.CharField(unique=True, max_length=20)
+    codigo_barras = models.CharField(unique=True, max_length=20, default=str(uuid.uuid4())[:20])
     centro_costo = models.CharField(max_length=100, blank=True, null=True)
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     precio = models.IntegerField()
+    familia = models.ForeignKey(
+        Familia,
+        on_delete=models.CASCADE,
+        related_name='productos',
+        help_text='Familia o subfamilia a la que pertenece el producto.'
+    )
 
 
 
@@ -140,17 +177,58 @@ class Producto(models.Model):
     def get_total(self):
         return sum(obj.precio for obj in Producto.objects.all())
 
+class Pendiente(models.Model):
+    producto = models.ForeignKey('Producto', on_delete=models.CASCADE, related_name='pendientes', db_column='producto_id')
+    bodega = models.ForeignKey('Bodega', on_delete=models.CASCADE, related_name='pendientes', db_column='bodega_id')
+    descripcion = models.TextField()
+    completado = models.BooleanField(default=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pendiente'
+        verbose_name = 'Pendiente'
+        verbose_name_plural = 'Pendientes'
+        ordering = ['-creado_en']
+
+    def __str__(self):
+        return f"{self.descripcion} ({'completado' if self.completado else 'pendiente'})"
+
+
 class StockActual(models.Model):
-    producto = models.OneToOneField(Producto, on_delete=models.CASCADE, related_name="stock")
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name="stock")
     cantidad = models.IntegerField()
     actualizado_en = models.DateTimeField(auto_now=True)
+    bodega = models.ForeignKey('Bodega', on_delete=models.CASCADE, related_name="stock")
 
+    class Meta:
+        unique_together = ('producto', 'bodega')
+
+
+class Notificacion(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificaciones', db_column='usuario_id')
+    titulo = models.TextField()
+    mensaje = models.TextField()
+    leido = models.BooleanField(default=False)
+    creada_en = models.DateTimeField(auto_now_add=True)
+    stock = models.ForeignKey('StockActual', null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name='notificaciones_stock', default=None)
+    envio = models.ForeignKey('Envio', null=True, blank=True, on_delete=models.SET_NULL, related_name='notificaciones_envio', default=None)
+    pendiente = models.ForeignKey('Envio', null=True, blank=True, on_delete=models.SET_NULL, related_name='notificaciones_pendiente', default=None)
+
+    def __str__(self):
+        return f"{self.titulo} - {'Leído' if self.leido else 'No leído'}"
+
+    class Meta:
+        managed = False
+        db_table = 'notificacion'
+        verbose_name = 'Notificación'
 
 class Ingreso(models.Model):
     id_producto = models.ForeignKey('Producto', models.CASCADE, db_column='id_producto')
     id_usuario = models.ForeignKey(settings.AUTH_USER_MODEL, models.CASCADE, db_column='id_usuario')
+    bodega = models.ForeignKey('Bodega', on_delete=models.CASCADE, related_name='ingresos')
     cantidad = models.IntegerField()
-    fecha = models.DateTimeField()
+    fecha = models.DateTimeField(auto_now_add=True)
     observacion = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -160,8 +238,9 @@ class Ingreso(models.Model):
 class Retiro(models.Model):
     id_producto = models.ForeignKey(Producto, models.CASCADE, db_column='id_producto')
     id_usuario = models.ForeignKey(settings.AUTH_USER_MODEL, models.CASCADE, db_column='id_usuario')
+    bodega = models.ForeignKey('Bodega', on_delete=models.CASCADE, related_name='retiros')
     cantidad = models.IntegerField()
-    fecha = models.DateTimeField()
+    fecha = models.DateTimeField(auto_now=True)
     observacion = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -180,6 +259,9 @@ class Usuario(models.Model):
     class Meta:
         managed = False
         db_table = 'usuario'
+    
+
+
 
 class PDFUpload(models.Model):
     archivo = models.FileField(upload_to='pdfs/')
@@ -201,3 +283,31 @@ class ExcelUpload(models.Model):
                 os.remove(self.archivo.path)
         super().delete(*args, **kwargs)
 
+
+class Envio(models.Model):
+    bodega_origen = models.ForeignKey('Bodega', on_delete=models.CASCADE, related_name='envios_salientes')
+    bodega_destino = models.ForeignKey('Bodega', on_delete=models.CASCADE, related_name='envios_entrantes')
+    fecha = models.DateTimeField(auto_now_add=True)
+    confirmado = models.BooleanField(default=False)
+
+    class Meta:
+        managed = False
+        db_table = 'envio'
+
+class EnvioDetalle(models.Model):
+    envio = models.ForeignKey('Envio', on_delete=models.CASCADE, related_name='detalles')
+    producto = models.ForeignKey('Producto', on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'envio_detalle'
+
+class Bodega(models.Model):
+    nombre = models.CharField(max_length=100)
+    ubicacion = models.TextField(blank=True)
+    usuarios = models.ManyToManyField(User, related_name='bodegas', db_table='bodega_usuarios')
+
+    class Meta:
+        managed = False
+        db_table = 'bodega'

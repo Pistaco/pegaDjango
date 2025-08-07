@@ -34,6 +34,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     'django_filters',
     'corsheaders',
+    'django_celery_beat',
     'rest_framework',
     'rest_framework.authtoken',
     'django.contrib.admin',
@@ -44,6 +45,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'app'
 ]
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # o el que uses
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
