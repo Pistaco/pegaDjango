@@ -32,7 +32,6 @@ pillow==11.3.0
 prompt_toolkit==3.0.51
 psycopg2-binary==2.9.10
 pycparser==2.22
-pypdf==5.9.0
 pypdfium2==4.30.0
 python-barcode==0.15.1
 python-crontab==3.3.0
