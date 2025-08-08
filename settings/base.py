@@ -8,6 +8,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # SECURITY WARNING: Mantener SECRET_KEY en variables de entorno
+print("cargado0.3")
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # Application definition
