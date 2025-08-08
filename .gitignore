@@ -1,0 +1,31 @@
+# PyCharm and other IDEs
+.idea/
+.vscode/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*.egg
+.eggs/
+
+# Database
+db.sqlite3
+
+# Media and Static files
+/media/
+/static/
+
+# Django-specific files
+*.log
+local_settings.py
+.env
+
+# Distribution and build files
+dist/
+build/
+*.egg-info/
