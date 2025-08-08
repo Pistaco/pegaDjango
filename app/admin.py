@@ -1,9 +1,7 @@
 from django.contrib import admin
 from django.contrib.admin import AdminSite
-from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
-from app.models import Producto, Ingreso, Retiro, StockActual, PDFUpload, ExcelUpload, Bodega, Envio, EnvioDetalle, \
-    Notificacion, Pendiente
+from app.models import Producto, Ingreso, Retiro, StockActual, PDFUpload, ExcelUpload
 
 
 @admin.register(Producto)
@@ -42,29 +40,4 @@ class PDFUploadAdmin(admin.ModelAdmin):
 
 @admin.register(ExcelUpload)
 class ExcelUploadAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(Bodega)
-class Bodegaadmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(Envio)
-class EnvioAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(EnvioDetalle)
-class EnvioDetalleAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(Notificacion)
-class NotificacionAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(Pendiente)
-class PendienteAdmin(admin.ModelAdmin):
     pass

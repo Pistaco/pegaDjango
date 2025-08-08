@@ -7,7 +7,6 @@ import camelot
 import qrcode
 from barcode.writer import ImageWriter
 from django.contrib.auth.models import User
-from django.db.models import Exists, OuterRef, Sum
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import render
 from django_filters.rest_framework import DjangoFilterBackend
@@ -16,35 +15,15 @@ from openpyxl.reader.excel import load_workbook
 # Create your views here.
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.decorators import permission_classes, api_view, action
+from rest_framework.decorators import permission_classes, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from DjangoProject import settings
-from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload, Envio, EnvioDetalle, \
-    Bodega, Familia, Notificacion, Pendiente
+from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload
 from .serializer import CargoSerializer, ProductoSerializer, IngresoSerializer, RetiroSerializer, UsuarioSerializer, \
-    StockActualSerializer, ProductoStockSerializer, PDFUploadSerializer, ExcelUploadSerializer, UserSerializer, \
-    EnvioSerializer, EnvioDetalleSerializer, BodegaSerializer, EnvioSerializerAnidado, FamiliaSerializer, \
-    NotificacionSerializer, PendienteSerializer
-
-
-# permissions.py
-
-class SoloBodeguerosVenEnviosALaBodega(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated
-
-    def has_object_permission(self, request, view, obj):
-        user = request.user
-        if user.groups.filter(name="Bodeguero").exists():
-            return obj.bodega_destino in user.bodegas.all()
-        return True
-
-class SoloBodeguerosVenStockDeSuBodega(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.groups.filter(name="Bodeguero").exists()
+    StockActualSerializer, ProductoStockSerializer, PDFUploadSerializer, ExcelUploadSerializer, UserSerializer
 
 
 class BodegueroNOT(permissions.BasePermission):
@@ -74,14 +53,6 @@ class CargoViewSet(viewsets.ModelViewSet):
     queryset = Cargo.objects.all()
     serializer_class = CargoSerializer
     permission_classes = [BodegueroNOT]
-    
-
-class FamiliaViewSet(viewsets.ModelViewSet):
-    queryset = Familia.objects.all()
-    serializer_class = FamiliaSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['padre']
-    search_fields = ['nombre']
 
 class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.all()
@@ -89,44 +60,8 @@ class ProductoViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     ordering = ['id']
     ordering_fields = ['nombre', 'codigo_barras']
-    filterset_fields = ['codigo_barras', 'nombre', 'id', 'familia']
+    filterset_fields = ['codigo_barras', 'nombre', 'id']
     search_fields = ['nombre', 'codigo_barras', 'descripcion']
-
-class NotificacionViewSet(viewsets.ModelViewSet):
-    serializer_class = NotificacionSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
-    filterset_fields = ['leido']
-
-    def update(self, request, *args, **kwargs):
-        kwargs['partial'] = True  # Permite actualizar solo algunos campos
-        return super().update(request, *args, **kwargs)
-
-    def get_queryset(self):
-        return Notificacion.objects.filter(usuario=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(usuario=self.request.user)
-
-class ProductosEnMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = ProductoSerializer
-    permission_classes = [IsAuthenticated, SoloBodeguerosVenStockDeSuBodega]
-
-    def get_queryset(self):
-        user = self.request.user
-        bodegas = getattr(user, "bodegas", None)
-        if bodegas is not None:
-            # Filtra productos que tienen al menos un stock en bodegas del usuario
-            return Producto.objects.filter(
-                Exists(
-                    StockActual.objects.filter(
-                        producto=OuterRef('pk'),
-                        bodega__in=bodegas.all()
-                    )
-                )
-            ).distinct()
-        return Producto.objects.none()
-
 
 class ProductoStockViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.select_related('stock').all()
@@ -148,67 +83,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class StockViewSet(viewsets.ModelViewSet):
     queryset = StockActual.objects.all()
     serializer_class = StockActualSerializer
-    permission_classes = [IsAuthenticated]
 
-class StockBajoStockViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = StockActualSerializer
-    def get_queryset(self):
-        return StockActual.objects.filter(cantidad__lt=5)
-
-class StockDeMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = StockActualSerializer
-    permission_classes = [IsAuthenticated, SoloBodeguerosVenStockDeSuBodega]
-
-    def get_queryset(self):
-        user = self.request.user
-        bodegas = getattr(user, "bodegas", None)
-        if bodegas is not None:
-            return StockActual.objects.filter(bodega__in=bodegas.all())
-        return StockActual.objects.none()
-
-class StockDeMiBodegaBajoStockViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = StockActualSerializer
-    permission_classes = [IsAuthenticated, SoloBodeguerosVenStockDeSuBodega]
-
-    def get_queryset(self):
-        user = self.request.user
-        bodegas = getattr(user, "bodegas", None)
-        if bodegas is not None:
-            return StockActual.objects.filter(bodega__in=bodegas.all()).filter(cantidad__lt=5)
-        return StockActual.objects.none()
-class EnvioViewSet(viewsets.ModelViewSet):
-    queryset = Envio.objects.all()
-    serializer_class = EnvioSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['confirmado', 'bodega_origen', 'bodega_destino']
-
-class EnvioAnidadoViewSet(viewsets.ModelViewSet):
-    queryset = Envio.objects.all().prefetch_related('detalles')
-    serializer_class = EnvioSerializerAnidado
-    permission_classes = [SoloBodeguerosVenEnviosALaBodega]
-    name = 'EnvioAnidado'
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.groups.filter(name="Bodeguero").exists():
-            return Envio.objects.filter(bodega_destino__in=user.bodegas.all())
-        return Envio.objects.all()
-
-
-class EnvioDetalleViewSet(viewsets.ModelViewSet):
-    queryset = EnvioDetalle.objects.all()
-    serializer_class = EnvioDetalleSerializer
-
-class BodegaViewSet(viewsets.ModelViewSet):
-    queryset = Bodega.objects.all()
-    serializer_class = BodegaSerializer
-
-class PendienteViewSet(viewsets.ModelViewSet):
-    queryset = Pendiente.objects.all().select_related('producto')
-    serializer_class = PendienteSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['producto', 'completado']
-    search_fields = ['descripcion']
 
 class PDFUploadView(APIView):
     authentication_classes = [TokenAuthentication]
@@ -280,6 +155,10 @@ class ExcelUploadView(APIView):
                     codigo_barras=row_data.get("Código de barras") or str(uuid.uuid4())[:20],
                     centro_costo=row_data.get("Centro Costo")
                 )
+
+                stock = StockActual.objects.get(producto_id=producto)
+                stock.cantidad = int(row_data.get("Cantidad", 0))
+                stock.save()
 
 
 
