@@ -45,3 +45,6 @@ tzdata==2025.2
 vine==5.1.0
 wcwidth==0.2.13
 whitenoise
+psycopg2-binary==2.9.7
+gunicorn==21.2.0
+python-dotenv==1.0.0
