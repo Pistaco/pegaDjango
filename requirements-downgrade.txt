@@ -1,0 +1,53 @@
+# Core Django 3.2 LTS - Compatible con PostgreSQL 10 y Python 3.9
+Django==3.2.25
+asgiref==3.4.1
+
+# Database
+psycopg2-binary==2.8.6
+
+# Django REST Framework compatible con Django 3.2
+djangorestframework==3.12.4
+django-cors-headers==3.13.0
+django-filter==21.1
+
+# Celery compatible con Django 3.2
+celery
+django-celery-beat
+redis
+kombu
+billiard
+
+# Environment management
+django-environ==0.9.0
+
+# Static files
+whitenoise==6.2.0
+
+# Timezone field compatible con Django 3.2
+django-timezone-field==4.2.3
+pytz==2022.1
+
+# Utilities - versiones compatibles con Django 3.2
+python-dateutil==2.8.2
+six==1.16.0
+sqlparse==0.4.2
+typing_extensions==4.3.0
+
+# Packaging
+setuptools==65.0.0
+wheel==0.37.1
+
+# Otras librerías del requirements.txt original - versiones compatibles
+beautifulsoup4==4.11.1
+lxml==4.9.1
+openpyxl==3.0.10
+pandas==1.5.3
+numpy==1.24.3
+pillow==9.5.0
+requests==2.28.2
+urllib3==1.26.15
+
+# Development tools (opcionales - descomenta si las necesitas)
+# django-debug-toolbar==3.2.4
+# factory-boy==3.2.1
+# pytest-django==4.5.2

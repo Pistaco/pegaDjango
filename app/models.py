@@ -195,6 +195,7 @@ class ExcelUpload(models.Model):
     archivo = models.FileField(upload_to='excels/')
     fecha_subida = models.DateTimeField(auto_now_add=True)
 
+
     def delete(self, *args, **kwargs):
         if self.archivo:
             if os.path.isfile(self.archivo.path):
