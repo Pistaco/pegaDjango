@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent
 
 # SECURITY WARNING: Mantener SECRET_KEY en variables de entorno
 print("cargado0.3")
