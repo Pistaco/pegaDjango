@@ -40,7 +40,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'mi_app.urls'
+ROOT_URLCONF = 'DjangoProject.urls'
 
 # Base templates configuration
 TEMPLATES = [
