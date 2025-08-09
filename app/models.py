@@ -134,7 +134,7 @@ class Producto(models.Model):
 
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'producto'
 
     def get_total(self):
