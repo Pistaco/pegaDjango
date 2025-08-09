@@ -158,6 +158,11 @@ class EnvioSerializerAnidado(serializers.ModelSerializer):
 
         origen = data.get('origen', getattr(self.instance, 'origen', None))
 
+        if len(detalles) == 0:
+            raise serializers.ValidationError(
+                "Necesita al menos un producto en detalles"
+            )
+
         if confirmar and detalles and origen:
             for detalle in detalles:
                 producto = detalle['producto']

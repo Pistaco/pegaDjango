@@ -3,10 +3,11 @@ from rest_framework import routers
 from .views import CargoViewSet, ProductoViewSet, IngresoViewSet, RetiroViewSet, UsuarioViewSet, StockViewSet, \
     ProductoStockViewSet, UserViewSet, EnvioViewSet, Envio, EnvioDetalleViewSet, BodegaViewSet, EnvioAnidadoViewSet, \
     StockDeMiBodegaViewSet, ProductosEnMiBodegaViewSet, StockBajoStockViewSet, StockDeMiBodegaBajoStockViewSet, \
-    FamiliaViewSet, NotificacionViewSet, PendienteViewSet
+    FamiliaViewSet, NotificacionViewSet, PendienteViewSet, ProductoEnvioViewSet
 
 router = routers.DefaultRouter()
 router.register(r'cargos', CargoViewSet)
+router.register('productos/envios', ProductoEnvioViewSet, basename='productos-envio')
 router.register('productos/mi-bodega', ProductosEnMiBodegaViewSet, basename='productos-mi-bodega')
 router.register(r'productos', ProductoViewSet)
 

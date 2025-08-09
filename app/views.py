@@ -131,6 +131,41 @@ class ProductosEnMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
 class ProductoStockViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.select_related('stock').all()
     serializer_class = ProductoStockSerializer
+
+
+
+class ProductoEnvioViewSet(viewsets.ModelViewSet):
+    queryset = Producto.objects.all()
+    serializer_class = ProductoSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ('id', 'nombre', 'codigo_barras')
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        p = self.request.query_params
+        bodega_id = p.get('bodega_id')
+        con_stock = p.get('con_stock')  # "1"/"true" habilita filtro
+        cantidad_min = p.get('cantidad_min')  # nuevo: umbral dinámico
+
+        if bodega_id and str(con_stock) in ('1', 'true', 'True'):
+            # Si no viene cantidad_min, asumimos 1
+            try:
+                cant = int(cantidad_min) if cantidad_min is not None else 1
+            except ValueError:
+                cant = 1
+
+            stock_subq = StockActual.objects.filter(
+                producto_id=OuterRef('pk'),
+                bodega_id=bodega_id,
+                cantidad__gte=cant
+            )
+            qs = qs.annotate(_hay_stock=Exists(stock_subq)).filter(_hay_stock=True)
+
+        return qs
+
+
+
+
 class IngresoViewSet(viewsets.ModelViewSet):
     queryset = Ingreso.objects.all()
     serializer_class = IngresoSerializer
