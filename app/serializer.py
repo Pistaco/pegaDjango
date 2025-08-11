@@ -21,6 +21,7 @@ class ProductoStockSerializer(serializers.ModelSerializer):
         model = Producto
         fields = '__all__'
 
+
 class PendienteSerializer(serializers.ModelSerializer):
     producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
 

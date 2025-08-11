@@ -12,6 +12,8 @@ router.register(r'cargos', CargoViewSet)
 router.register(r'productos/referenceFields', ProductoViewSetReferenceInput, basename='productos-referenceFields')
 router.register('productos/envios', ProductoEnvioViewSet, basename='productos-envio')
 router.register('productos/mi-bodega', ProductosEnMiBodegaViewSet, basename='productos-mi-bodega')
+
+
 router.register(r'productos', ProductoViewSet)
 
 router.register(r'familias', FamiliaViewSet)

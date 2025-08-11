@@ -4,20 +4,25 @@ import uuid
 
 import barcode
 import camelot
+import pandas as pd
 import qrcode
 from barcode.writer import ImageWriter
 from django.contrib.auth.models import User
 from django.db.models import Exists, OuterRef, Sum
+from django.db.models.expressions import Subquery, Value
+from django.db.models.fields import IntegerField, CharField
+from django.db.models.functions.comparison import Coalesce
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import render
 from django_filters.rest_framework import DjangoFilterBackend
 from openpyxl.reader.excel import load_workbook
 
 # Create your views here.
-from rest_framework import viewsets, permissions, status, filters
+from rest_framework import viewsets, permissions, status, filters, mixins
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import permission_classes, api_view, action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -121,6 +126,15 @@ class NotificacionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
+
+
+    # views.py
+
+def user_is_bodeguero(user):
+    return user.is_authenticated and user.groups.filter(name="Bodeguero").exists()
+
+def user_bodegas_qs(user):
+    return getattr(user, 'bodegas', Bodega.objects.none()).all()
 
 class ProductosEnMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProductoSerializer
@@ -459,3 +473,7 @@ def sqr_image_on_demand(request, pk):
             'Content-Disposition': f'attachment; filename="{producto.codigo_barras}.png"'
         }
     )
+
+
+
+
