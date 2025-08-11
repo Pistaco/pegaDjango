@@ -290,6 +290,13 @@ class Envio(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
     confirmado = models.BooleanField(default=False)
 
+    usuario = models.ForeignKey(
+        User,
+        db_column='usuario_id',
+        on_delete=models.PROTECT,
+        related_name='envios'
+    )
+
     class Meta:
         managed = False
         db_table = 'envio'

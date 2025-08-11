@@ -146,10 +146,13 @@ class EnvioSerializer(serializers.ModelSerializer):
 
 class EnvioSerializerAnidado(serializers.ModelSerializer):
     detalles = EnvioDetalleSerializer(many=True)
+    usuario = serializers.PrimaryKeyRelatedField(read_only=True)
+    usuario_username = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Envio
-        fields = ['id', 'bodega_origen', 'bodega_destino', 'fecha', 'confirmado', 'detalles']
+        fields = ['id', 'bodega_origen', 'bodega_destino', 'fecha', 'confirmado', 'detalles', 'usuario', 'usuario_username']
+        read_only_fields = ['usuario']
 
     def validate(self, data):
         # Detectar si se está intentando confirmar
@@ -208,3 +211,6 @@ class EnvioSerializerAnidado(serializers.ModelSerializer):
                 EnvioDetalle.objects.create(envio=instance, **detalle_data)
 
         return instance
+
+    def get_usuario_username(self, obj):
+        return getattr(obj.usuario, 'username', None)
