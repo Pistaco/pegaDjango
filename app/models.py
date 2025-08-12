@@ -210,10 +210,10 @@ class Notificacion(models.Model):
     mensaje = models.TextField()
     leido = models.BooleanField(default=False)
     creada_en = models.DateTimeField(auto_now_add=True)
-    stock = models.ForeignKey('StockActual', null=True, blank=True, on_delete=models.SET_NULL,
+    stock = models.ForeignKey('StockActual', null=True, blank=True, on_delete=models.CASCADE,
                               related_name='notificaciones_stock', default=None)
-    envio = models.ForeignKey('Envio', null=True, blank=True, on_delete=models.SET_NULL, related_name='notificaciones_envio', default=None)
-    pendiente = models.ForeignKey('Envio', null=True, blank=True, on_delete=models.SET_NULL, related_name='notificaciones_pendiente', default=None)
+    envio = models.ForeignKey('Envio', null=True, blank=True, on_delete=models.CASCADE, related_name='notificaciones_envio', default=None)
+    pendiente = models.ForeignKey('Envio', null=True, blank=True, on_delete=models.CASCADE, related_name='notificaciones_pendiente', default=None)
 
     def __str__(self):
         return f"{self.titulo} - {'Leído' if self.leido else 'No leído'}"

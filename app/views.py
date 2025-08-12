@@ -2,7 +2,10 @@ import io
 import os
 import uuid
 
+import PIL
 import barcode
+from barcode.writer import ImageWriter
+from PIL import Image, ImageDraw, ImageFont
 import camelot
 import pandas as pd
 import qrcode
@@ -138,7 +141,7 @@ def user_bodegas_qs(user):
 
 class ProductosEnMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProductoSerializer
-    permission_classes = [IsAuthenticated, SoloBodeguerosVenStockDeSuBodega]
+    permission_classes = [IsAuthenticated ]
 
     def get_queryset(self):
         user = self.request.user
@@ -476,8 +479,36 @@ class ExcelUploadView(APIView):
             excel_obj.delete()
             return Response(response.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+
+
+# Función auxiliar para agregar texto arriba de una imagen
+def add_product_name_to_image(img: Image.Image, text: str) -> Image.Image:
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    font_path = os.path.join(os.path.dirname(__file__), "fonts", "FreeMono", "FreeMonospaced.ttf")
+    font = ImageFont.truetype(font_path, size=40)
+    # Medidas
+    bbox = font.getbbox(text)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+
+    img_width, img_height = img.size
+
+    # Nueva imagen con espacio extra arriba
+    new_height = img_height + text_height + 10
+    new_img = Image.new("RGB", (img_width, new_height), "white")
+
+    # Dibujar texto
+    draw = ImageDraw.Draw(new_img)
+    text_x = (img_width - text_width) // 2
+    draw.text((text_x, 5), text, font=font, fill="black")
+
+    # Pegar la imagen original abajo
+    new_img.paste(img, (0, text_height + 10))
+
+    return new_img
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -487,17 +518,29 @@ def barcode_image_on_demand(request, pk):
     except Producto.DoesNotExist:
         return HttpResponse("Producto no encontrado", status=404)
 
+    # Generar código de barras
     barcode_class = barcode.get_barcode_class('code128')
     buffer = io.BytesIO()
     barcode_class(producto.codigo_barras, writer=ImageWriter()).write(buffer)
 
+    # Abrir imagen y agregar nombre
+    buffer.seek(0)
+    img = Image.open(buffer)
+    img_with_name = add_product_name_to_image(img, producto.nombre)
+
+    # Guardar a buffer y enviar
+    output = io.BytesIO()
+    img_with_name.save(output, format="PNG")
+    output.seek(0)
+
     return HttpResponse(
-        buffer.getvalue(),
+        output.getvalue(),
         content_type="image/png",
         headers={
             'Content-Disposition': f'attachment; filename="{producto.codigo_barras}.png"'
         }
     )
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -507,18 +550,19 @@ def sqr_image_on_demand(request, pk):
     except Producto.DoesNotExist:
         return HttpResponse("Producto no encontrado", status=404)
 
+    # Generar código QR
     qr = qrcode.make(producto.codigo_barras)
-    buffer = io.BytesIO()
-    qr.save(buffer, format='PNG')
+    img_with_name = add_product_name_to_image(qr, producto.nombre)
+
+    # Guardar a buffer y enviar
+    output = io.BytesIO()
+    img_with_name.save(output, format="PNG")
+    output.seek(0)
 
     return HttpResponse(
-        buffer.getvalue(),
+        output.getvalue(),
         content_type="image/png",
         headers={
             'Content-Disposition': f'attachment; filename="{producto.codigo_barras}.png"'
         }
     )
-
-
-
-
