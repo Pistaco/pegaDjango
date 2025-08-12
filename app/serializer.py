@@ -15,6 +15,12 @@ class ProductoSerializer(serializers.ModelSerializer):
         model = Producto
         fields = '__all__'
 
+class ProductoInventarioSerializer(serializers.ModelSerializer):
+    cantidad = serializers.IntegerField()
+    class Meta:
+        model = Producto
+        fields = ('id', 'nombre', 'precio', 'cantidad')
+
 class ProductoStockSerializer(serializers.ModelSerializer):
     stock_id = serializers.IntegerField(source="stock.id", read_only=True)
     class Meta:

@@ -8,7 +8,7 @@ import pandas as pd
 import qrcode
 from barcode.writer import ImageWriter
 from django.contrib.auth.models import User
-from django.db.models import Exists, OuterRef, Sum
+from django.db.models import Exists, OuterRef, Sum, F
 from django.db.models.expressions import Subquery, Value
 from django.db.models.fields import IntegerField, CharField
 from django.db.models.functions.comparison import Coalesce
@@ -32,7 +32,7 @@ from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFU
 from .serializer import CargoSerializer, ProductoSerializer, IngresoSerializer, RetiroSerializer, UsuarioSerializer, \
     StockActualSerializer, ProductoStockSerializer, PDFUploadSerializer, ExcelUploadSerializer, UserSerializer, \
     EnvioSerializer, EnvioDetalleSerializer, BodegaSerializer, EnvioSerializerAnidado, FamiliaSerializer, \
-    NotificacionSerializer, PendienteSerializer
+    NotificacionSerializer, PendienteSerializer, ProductoInventarioSerializer
 
 
 # permissions.py
@@ -89,11 +89,11 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.groups.filter(name="Bodeguero").exists():
             return User.objects.filter(username=user.username).all()
+        return User.objects.all()
 class CargoViewSet(viewsets.ModelViewSet):
     queryset = Cargo.objects.all()
     serializer_class = CargoSerializer
-    permission_classes = [BodegueroNOT]
-    
+
 
 class FamiliaViewSet(viewsets.ModelViewSet):
     queryset = Familia.objects.all()
@@ -222,6 +222,54 @@ class ProductoViewSetReferenceInput(viewsets.ModelViewSet):
         return qs
 
 
+class ProductoInventarioViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Lista productos con su cantidad (stock) según bodega.
+    - ?bodega_id=<id> filtra la cantidad a esa bodega.
+    - Si el usuario es 'Bodeguero', solo puede consultar sus bodegas asignadas.
+    """
+    serializer_class = ProductoInventarioSerializer
+    permission_classes = [permissions.IsAuthenticated ]
+
+
+
+    def get_queryset(self):
+        params = self.request.query_params
+        bodega_id = params.get('bodega') or params.get('bodega_id')
+        con_stock = params.get('con_stock') in ('1', 'true', 'True')
+
+        # Reglas para Bodeguero
+        if user_is_bodeguero(self.request.user):
+            mis_bodegas = User.objects.get(username=self.request.user.username).bodegas.values_list("id")
+            if not mis_bodegas:
+                return Producto.objects.none()
+            if bodega_id is None:
+                bodega_id = next(iter(mis_bodegas))
+
+        # Sin bodega no tiene sentido listar (evita mostrar 'cantidad' vacía)
+        if bodega_id is None:
+            qs = (
+                Producto.objects
+                .order_by('nombre')
+                .distinct("nombre")
+                .annotate(cantidad=F('stock__cantidad'))            # trae cantidad
+            )
+            return qs
+
+        # Solo productos que TIENEN stock en esa bodega (join directo)
+        qs = (
+            Producto.objects
+            .filter(stock__bodega_id=bodega_id)                 # exige existencia de fila stock
+            .annotate(cantidad=F('stock__cantidad'))            # trae cantidad
+            .order_by('nombre')
+        )
+
+        if con_stock:
+            qs = qs.filter(cantidad__gt=0)
+
+        return qs
+
+
 
 
 class IngresoViewSet(viewsets.ModelViewSet):
@@ -270,7 +318,7 @@ class StockBajoStockViewSet(viewsets.ReadOnlyModelViewSet):
 
 class StockDeMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = StockActualSerializer
-    permission_classes = [IsAuthenticated, SoloBodeguerosVenStockDeSuBodega]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -281,7 +329,7 @@ class StockDeMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
 
 class StockDeMiBodegaBajoStockViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = StockActualSerializer
-    permission_classes = [IsAuthenticated, SoloBodeguerosVenStockDeSuBodega]
+    permission_classes = [IsAuthenticated ]
 
     def get_queryset(self):
         user = self.request.user
@@ -298,7 +346,6 @@ class EnvioViewSet(viewsets.ModelViewSet):
 class EnvioAnidadoViewSet(viewsets.ModelViewSet):
     queryset = Envio.objects.all().prefetch_related('detalles')
     serializer_class = EnvioSerializerAnidado
-    permission_classes = [SoloBodeguerosVenEnviosALaBodega]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['confirmado', 'bodega_origen', 'bodega_destino', 'usuario']
     name = 'EnvioAnidado'
@@ -326,13 +373,11 @@ class EnvioDetalleViewSet(viewsets.ModelViewSet):
 class BodegaViewSet(viewsets.ModelViewSet):
     queryset = Bodega.objects.all()
     serializer_class = BodegaSerializer
-    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre']
 
     def get_queryset(self):
         qs = super().get_queryset()
-        # Un bodeguero solo ve sus bodegas (útil para ReferenceInput de bodega)
         if user_is_bodeguero(self.request.user):
             qs = user_bodegas_qs(self.request.user)
         return qs
