@@ -14,6 +14,7 @@ class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producto
         fields = '__all__'
+    codigo_barras = serializers.CharField(required=False, allow_blank=True)
 
 class ProductoInventarioSerializer(serializers.ModelSerializer):
     cantidad = serializers.IntegerField()

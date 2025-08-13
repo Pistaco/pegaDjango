@@ -111,7 +111,7 @@ WSGI_APPLICATION = 'DjangoProject.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pega',
+        'NAME': 'pega_prueba_2',
         'USER': 'ignacio',
         'PASSWORD': 'coloma30',
         'HOST': 'localhost',  # o la IP/URL de tu servidor
