@@ -3,7 +3,7 @@ from django.contrib.admin import AdminSite
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
 from app.models import Producto, Ingreso, Retiro, StockActual, PDFUpload, ExcelUpload, Bodega, Envio, EnvioDetalle, \
-    Notificacion, Pendiente
+    Notificacion, Pendiente, ImportJob, ImportRow
 
 
 @admin.register(Producto)
@@ -67,4 +67,13 @@ class NotificacionAdmin(admin.ModelAdmin):
 
 @admin.register(Pendiente)
 class PendienteAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(ImportJob)
+class ImportJobAdmin(admin.ModelAdmin):
+    pass
+
+@admin.register(ImportRow)
+class ImportRowAdmin(admin.ModelAdmin):
     pass

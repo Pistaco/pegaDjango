@@ -4,7 +4,8 @@ from .views import CargoViewSet, ProductoViewSet, IngresoViewSet, RetiroViewSet,
     ProductoStockViewSet, UserViewSet, EnvioViewSet, Envio, EnvioDetalleViewSet, BodegaViewSet, EnvioAnidadoViewSet, \
     StockDeMiBodegaViewSet, ProductosEnMiBodegaViewSet, StockBajoStockViewSet, StockDeMiBodegaBajoStockViewSet, \
     FamiliaViewSet, NotificacionViewSet, PendienteViewSet, ProductoEnvioViewSet, ProductoViewSetReferenceInput, \
-    BodegaTodasViewSet, ProductoInventarioViewSet, EnvioEnProgresoViewSet, EnvioRecibidosViewSet
+    BodegaTodasViewSet, ProductoInventarioViewSet, EnvioEnProgresoViewSet, EnvioRecibidosViewSet, ImportJobViewSet, \
+    ImportRowViewSet
 
 router = routers.DefaultRouter()
 router.register(r'cargos', CargoViewSet)
@@ -23,6 +24,10 @@ router.register(r'familias', FamiliaViewSet)
 router.register(r'ingresos', IngresoViewSet)
 router.register(r'retiros', RetiroViewSet)
 router.register(r'usuarios', UsuarioViewSet)
+
+router.register(r'importaciones', ImportJobViewSet, basename='importaciones')
+router.register(r'import_rows', ImportRowViewSet, basename='import_rows')  # <-- NUEVO
+
 
 router.register(r'notificaciones', NotificacionViewSet, basename='notificaciones')
 

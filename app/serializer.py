@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload, EnvioDetalle, Envio, \
-    Bodega, Familia, Notificacion, Pendiente
+    Bodega, Familia, Notificacion, Pendiente, ImportJob, ImportRow
 
 
 class CargoSerializer(serializers.ModelSerializer):
@@ -229,3 +229,38 @@ class EnvioSerializerAnidado(serializers.ModelSerializer):
 
     def get_usuario_username(self, obj):
         return getattr(obj.usuario, 'username', None)
+
+
+class ImportJobSerializer(serializers.ModelSerializer):
+    bodega = serializers.PrimaryKeyRelatedField(queryset=Bodega.objects.all())
+
+    class Meta:
+        model = ImportJob
+        fields = ['id', 'usuario', 'bodega', 'filename', 'total_rows', 'created_at', 'finished_at', 'status', 'error_message']
+        read_only_fields = ['id', 'usuario', 'filename', 'total_rows', 'created_at', 'finished_at', 'status', 'error_message']
+
+
+class ImportRowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ImportRow
+        fields = ['id', 'import_job', 'row_number', 'nombre', 'cantidad', 'precio', 'producto', 'status', 'message']
+        read_only_fields = ['id', 'import_job', 'producto', 'status', 'message']
+
+
+class ImportUploadSerializer(serializers.Serializer):
+    """
+    Para el endpoint de carga:
+    - bodega (id)
+    - file (xlsx/xls/csv)
+    """
+    bodega = serializers.PrimaryKeyRelatedField(queryset=Bodega.objects.all())
+    familia = serializers.PrimaryKeyRelatedField(queryset=Familia.objects.all())
+    file = serializers.FileField()
+
+    def validate_file(self, f):
+        name = f.name.lower()
+        if not (name.endswith('.xlsx') or name.endswith('.xls') or name.endswith('.csv')):
+            raise serializers.ValidationError('Archivo debe ser .xlsx, .xls o .csv')
+        if f.size > 25 * 1024 * 1024:
+            raise serializers.ValidationError('Archivo demasiado grande (máx 25 MB)')
+        return f

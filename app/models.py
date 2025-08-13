@@ -318,3 +318,40 @@ class Bodega(models.Model):
     class Meta:
         managed = False
         db_table = 'bodega'
+
+class ImportJob(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.RESTRICT, db_column='usuario_id', related_name='import_jobs')
+    bodega  = models.ForeignKey('Bodega', on_delete=models.RESTRICT, db_column='bodega_id', related_name='import_jobs')
+    filename = models.TextField()
+    total_rows = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
+    finished_at = models.DateTimeField(null=True, blank=True, db_column='finished_at')
+    status = models.CharField(max_length=20, default='processing')
+    error_message = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'import_job'
+        verbose_name = 'Importación'
+        verbose_name_plural = 'Importaciones'
+
+    def __str__(self):
+        return f'Import #{self.id} - {self.filename} - {self.status}'
+
+
+class ImportRow(models.Model):
+    import_job = models.ForeignKey('ImportJob', on_delete=models.CASCADE, db_column='import_job_id', related_name='rows')
+    row_number = models.IntegerField()
+    nombre = models.TextField()
+    cantidad = models.DecimalField(max_digits=18, decimal_places=4)
+    precio = models.DecimalField(max_digits=18, decimal_places=2)
+    producto = models.ForeignKey('Producto', on_delete=models.SET_NULL, null=True, blank=True, db_column='producto_id', related_name='import_rows')
+    status = models.CharField(max_length=20, default='ok')
+    message = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'import_row'
+        verbose_name = 'Fila importada'
+        verbose_name_plural = 'Filas importadas'
+
+    def __str__(self):
+        return f'Row {self.row_number} ({self.status})'

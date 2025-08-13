@@ -1,3 +1,4 @@
+import csv
 import io
 import os
 import uuid
@@ -17,9 +18,10 @@ from django.db.models.fields import IntegerField, CharField
 from django.db.models.functions.comparison import Coalesce
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import render
+from django.utils.timezone import now
 from django_filters.rest_framework import DjangoFilterBackend
 from openpyxl.reader.excel import load_workbook
-from django.db import connection
+from django.db import transaction
 # Create your views here.
 from rest_framework import viewsets, permissions, status, filters, mixins
 from rest_framework.authentication import TokenAuthentication
@@ -32,11 +34,12 @@ from rest_framework.views import APIView
 from DjangoProject import settings
 from .filters import StockFilter, FamiliaFilterSet, BodegaFilter
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload, Envio, EnvioDetalle, \
-    Bodega, Familia, Notificacion, Pendiente
+    Bodega, Familia, Notificacion, Pendiente, ImportRow, ImportJob
 from .serializer import CargoSerializer, ProductoSerializer, IngresoSerializer, RetiroSerializer, UsuarioSerializer, \
     StockActualSerializer, ProductoStockSerializer, PDFUploadSerializer, ExcelUploadSerializer, UserSerializer, \
     EnvioSerializer, EnvioDetalleSerializer, BodegaSerializer, EnvioSerializerAnidado, FamiliaSerializer, \
-    NotificacionSerializer, PendienteSerializer, ProductoInventarioSerializer
+    NotificacionSerializer, PendienteSerializer, ProductoInventarioSerializer, ImportRowSerializer, ImportJobSerializer, \
+    ImportUploadSerializer
 
 
 # permissions.py
@@ -641,3 +644,194 @@ def sqr_image_on_demand(request, pk):
             'Content-Disposition': f'attachment; filename="{producto.codigo_barras}.png"'
         }
     )
+
+
+class ImportJobViewSet(viewsets.ModelViewSet):
+    """
+    /api/importaciones/
+    - POST /upload/ (multipart): bodega, file
+    - GET listar trabajos (limitado por rol)
+    - GET /{id}/rows/ para ver detalle
+    """
+    queryset = ImportJob.objects.all().order_by('-created_at')
+    serializer_class = ImportJobSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user_is_bodeguero(user):
+            # Solo trabajos en bodegas a las que tiene acceso:
+            # Si tienes una tabla bodega_usuarios, filtra por ella. Aquí asumimos relación directa.
+            return qs.filter(usuario=user)
+        return qs
+
+    def perform_create(self, serializer):
+        # No se usa (creamos via /upload/)
+        serializer.save(usuario=self.request.user)
+
+    @action(detail=False, methods=['post'], url_path='upload')
+    def upload(self, request):
+        """
+        Carga un archivo Excel/CSV con columnas: nombre, cantidad, precio
+        Requiere bodega (id).
+        """
+        ser = ImportUploadSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        bodega = ser.validated_data['bodega']
+        familia = ser.validated_data['familia']
+        f = ser.validated_data['file']
+
+        # Si es Bodeguero, restringir bodega
+        if user_is_bodeguero(request.user):
+            # Aquí implementar tu lógica real (p.ej., validar que pertenece a esa bodega)
+            # raise PermissionDenied si no corresponde
+            pass
+
+        job = ImportJob.objects.create(
+            usuario=request.user,
+            bodega=bodega,
+            filename=f.name,
+            status='processing'
+        )
+
+        try:
+            # Parse archivo
+            rows = []
+            if f.name.lower().endswith('.csv'):
+                text = f.read().decode('utf-8', errors='ignore').splitlines()
+                reader = csv.DictReader(text)
+                for i, r in enumerate(reader, start=2):  # fila 2 por encabezado
+                    rows.append({
+                        'row_number': i,
+                        'nombre': (r.get('nombre') or '').strip(),
+                        'cantidad': (r.get('cantidad') or '').strip(),
+                        'precio': (r.get('precio') or '').strip(),
+                    })
+            else:
+                wb = load_workbook(filename=f, read_only=True, data_only=True)
+                ws = wb.active
+                headers = [str(c.value).strip().lower() if c.value is not None else '' for c in next(ws.rows)]
+                # esperamos columnas: nombre, cantidad, precio
+                colmap = {h: idx for idx, h in enumerate(headers)}
+                for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
+                    def get(h):
+                        idx = colmap.get(h, None)
+                        return (row[idx].value if idx is not None else None)
+                    rows.append({
+                        'row_number': i,
+                        'nombre': (get('nombre') or '').strip() if get('nombre') else '',
+                        'cantidad': get('cantidad'),
+                        'precio': get('precio'),
+                    })
+
+            to_create_rows = []
+            ok_count = 0
+
+            with transaction.atomic():
+                for r in rows:
+                    nombre = r['nombre']
+                    cantidad = r['cantidad']
+                    precio = r['precio']
+                    if nombre == '' or cantidad is None or precio is None:
+                        to_create_rows.append(ImportRow(
+                            import_job=job,
+                            row_number=r['row_number'],
+                            nombre=nombre or '',
+                            cantidad=cantidad or 0,
+                            precio=precio or 0,
+                            status='error',
+                            message='Fila incompleta: nombre/cantidad/precio'
+                        ))
+                        continue
+
+                    try:
+                        cantidad_val = float(cantidad)
+                        precio_val = float(precio)
+                        if cantidad_val < 0 or precio_val < 0:
+                            raise ValueError('Valores negativos no permitidos')
+
+                        # Producto por nombre (puedes cambiar a case-insensitive unique si quieres)
+                        codigo = uuid.uuid4()
+                        codigo = str(codigo)[:20]
+                        producto, created = Producto.objects.get_or_create(
+                            nombre=nombre,
+                            defaults={'precio': precio_val, 'familia': familia, 'codigo_barras': codigo},
+
+                        )
+                        if not created:
+                            # actualiza precio si distinto
+                            if producto.precio != precio_val:
+                                producto.precio = precio_val
+                                producto.save(update_fields=['precio'])
+
+                        # Upsert de stock: REEMPLAZA cantidad por la del Excel
+                        stock, s_created = StockActual.objects.get_or_create(
+                            producto=producto, bodega=bodega,
+                            defaults={'cantidad': cantidad_val}
+                        )
+                        if not s_created:
+                            # Para “sumar”, usa: stock.cantidad = stock.cantidad + Decimal(cantidad_val)
+                            stock.cantidad = cantidad_val
+                            stock.save(update_fields=['cantidad'])
+
+                        to_create_rows.append(ImportRow(
+                            import_job=job,
+                            row_number=r['row_number'],
+                            nombre=nombre,
+                            cantidad=cantidad_val,
+                            precio=precio_val,
+                            producto=producto,
+                            status='ok',
+                            message='OK' if created or s_created else 'Actualizado'
+                        ))
+                        ok_count += 1
+
+                    except Exception as e:
+                        to_create_rows.append(ImportRow(
+                            import_job=job,
+                            row_number=r['row_number'],
+                            nombre=nombre or '',
+                            cantidad=float(r['cantidad']) if r['cantidad'] not in (None, '') else 0,
+                            precio=float(r['precio']) if r['precio'] not in (None, '') else 0,
+                            status='error',
+                            message=str(e)[:500]
+                        ))
+
+                ImportRow.objects.bulk_create(to_create_rows, batch_size=500)
+                job.total_rows = len(rows)
+                job.status = 'done'
+                job.finished_at = now()
+                job.save(update_fields=['total_rows', 'status', 'finished_at'])
+
+            return Response(ImportJobSerializer(job).data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            job.status = 'failed'
+            job.error_message = str(e)[:2000]
+            job.finished_at = now()
+            job.save(update_fields=['status', 'error_message', 'finished_at'])
+            return Response({'detail': 'Fallo la importación', 'error': str(e)}, status=400)
+
+    @action(detail=True, methods=['get'], url_path='rows')
+    def rows(self, request, pk=None):
+        job = self.get_object()
+        rows = job.rows.all().order_by('row_number')
+        return Response(ImportRowSerializer(rows, many=True).data)
+
+class ImportRowViewSet(viewsets.ModelViewSet):
+    """
+    /api/import_rows/?import_job=<ID>&status=<ok|error|skipped>
+    """
+    queryset = ImportRow.objects.select_related('import_job', 'producto').order_by('row_number')
+    serializer_class = ImportRowSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['import_job', 'status']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Bodeguero solo ve sus filas (vía el job)
+        if user_is_bodeguero(self.request.user):
+            qs = qs.filter(import_job__usuario=self.request.user)
+        return qs
