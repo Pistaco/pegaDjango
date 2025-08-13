@@ -4,7 +4,7 @@ from .views import CargoViewSet, ProductoViewSet, IngresoViewSet, RetiroViewSet,
     ProductoStockViewSet, UserViewSet, EnvioViewSet, Envio, EnvioDetalleViewSet, BodegaViewSet, EnvioAnidadoViewSet, \
     StockDeMiBodegaViewSet, ProductosEnMiBodegaViewSet, StockBajoStockViewSet, StockDeMiBodegaBajoStockViewSet, \
     FamiliaViewSet, NotificacionViewSet, PendienteViewSet, ProductoEnvioViewSet, ProductoViewSetReferenceInput, \
-    BodegaTodasViewSet, ProductoInventarioViewSet
+    BodegaTodasViewSet, ProductoInventarioViewSet, EnvioEnProgresoViewSet, EnvioRecibidosViewSet
 
 router = routers.DefaultRouter()
 router.register(r'cargos', CargoViewSet)
@@ -12,6 +12,8 @@ router.register(r'cargos', CargoViewSet)
 router.register(r'productos/porBodega', ProductoInventarioViewSet, basename='productos-por-bodega')
 router.register(r'productos/referenceFields', ProductoViewSetReferenceInput, basename='productos-referenceFields')
 router.register('productos/envios', ProductoEnvioViewSet, basename='productos-envio')
+
+
 router.register('productos/mi-bodega', ProductosEnMiBodegaViewSet, basename='productos-mi-bodega')
 
 
@@ -35,6 +37,8 @@ router.register(r'stock', StockViewSet)
 
 
 router.register(r'envios', EnvioViewSet)
+router.register(r'enviosAnidados/en-progreso', EnvioEnProgresoViewSet, basename='envios-en-progreso')
+router.register(r'enviosAnidados/recibidos', EnvioRecibidosViewSet, basename='envios-recibidos')
 router.register(r'enviosAnidados', EnvioAnidadoViewSet, basename='enviosAnidados')
 router.register(r'envio_detalles', EnvioDetalleViewSet)
 router.register(r'bodegas/todas', BodegaTodasViewSet, basename='bodegas-todas')

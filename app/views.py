@@ -19,7 +19,7 @@ from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import render
 from django_filters.rest_framework import DjangoFilterBackend
 from openpyxl.reader.excel import load_workbook
-
+from django.db import connection
 # Create your views here.
 from rest_framework import viewsets, permissions, status, filters, mixins
 from rest_framework.authentication import TokenAuthentication
@@ -30,6 +30,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from DjangoProject import settings
+from .filters import StockFilter, FamiliaFilterSet, BodegaFilter
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload, Envio, EnvioDetalle, \
     Bodega, Familia, Notificacion, Pendiente
 from .serializer import CargoSerializer, ProductoSerializer, IngresoSerializer, RetiroSerializer, UsuarioSerializer, \
@@ -103,6 +104,7 @@ class FamiliaViewSet(viewsets.ModelViewSet):
     serializer_class = FamiliaSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['padre']
+    filterset_class = FamiliaFilterSet
     search_fields = ['nombre']
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -125,7 +127,9 @@ class NotificacionViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Notificacion.objects.filter(usuario=self.request.user)
+        if (user_is_bodeguero(self.request.user)):
+            return Notificacion.objects.filter(usuario=self.request.user)
+        return Notificacion.objects.all()
 
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
@@ -146,6 +150,8 @@ class ProductosEnMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
         bodegas = getattr(user, "bodegas", None)
+        if (not user.groups.filter(name="Bodeguero").exists()):
+            return Producto.objects.all()
         if bodegas is not None:
             # Filtra productos que tienen al menos un stock en bodegas del usuario
             return Producto.objects.filter(
@@ -162,6 +168,13 @@ class ProductosEnMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
 class ProductoStockViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.select_related('stock').all()
     serializer_class = ProductoStockSerializer
+    # Backends: filtrado + ordenamiento
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = StockFilter
+
+    # Permite ordenar desde React Admin (ej: ?ordering=-cantidad)
+    ordering_fields = ["id", "cantidad", "producto__nombre", "bodega__nombre"]
+    ordering = ["-id"]
 
 
 
@@ -313,15 +326,35 @@ class StockViewSet(viewsets.ModelViewSet):
     queryset = StockActual.objects.all()
     serializer_class = StockActualSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+
+    filterset_class = StockFilter
+
+    # Permite ordenar desde React Admin (ej: ?ordering=-cantidad)
+    ordering_fields = ["id", "cantidad", "producto__nombre", "bodega__nombre"]
+    filterset_fields = ['bodega', 'producto', 'cantidad']
+    search_fields = ['nombre', 'codigo_barras', 'descripcion']
 
 class StockBajoStockViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = StockActualSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = StockFilter
+    ordering_fields = ["id", "cantidad", "producto__nombre", "bodega__nombre"]
+    filterset_fields = ['bodega', 'producto', 'cantidad']
+    search_fields = ['nombre', 'codigo_barras', 'descripcion']
+
     def get_queryset(self):
         return StockActual.objects.filter(cantidad__lt=5)
 
 class StockDeMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = StockActualSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = StockFilter
+    ordering_fields = ["id", "cantidad", "producto__nombre", "bodega__nombre"]
+    filterset_fields = ['bodega', 'producto', 'cantidad']
+    search_fields = ['nombre', 'codigo_barras', 'descripcion']
 
     def get_queryset(self):
         user = self.request.user
@@ -333,6 +366,11 @@ class StockDeMiBodegaViewSet(viewsets.ReadOnlyModelViewSet):
 class StockDeMiBodegaBajoStockViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = StockActualSerializer
     permission_classes = [IsAuthenticated ]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = StockFilter
+    ordering_fields = ["id", "cantidad", "producto__nombre", "bodega__nombre"]
+    filterset_fields = ['bodega', 'producto', 'cantidad']
+    search_fields = ['nombre', 'codigo_barras', 'descripcion']
 
     def get_queryset(self):
         user = self.request.user
@@ -368,6 +406,41 @@ class EnvioAnidadoViewSet(viewsets.ModelViewSet):
         # Evita que alguien cambie el "usuario" del envío por PATCH/PUT
         serializer.save(usuario=self.get_object().usuario)
 
+class EnvioEnProgresoViewSet(viewsets.ModelViewSet):
+    """
+    Lista/consulta envíos en progreso (confirmado=False) del usuario autenticado.
+    """
+    queryset = Envio.objects.all().prefetch_related('detalles')
+    serializer_class = EnvioSerializerAnidado
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['confirmado', 'bodega_origen', 'bodega_destino', 'usuario']
+
+    def get_queryset(self):
+        user = self.request.user
+        return (Envio.objects
+                .select_related('bodega_origen', 'bodega_destino', 'usuario')
+                .filter(usuario_id=user.id, confirmado=False)
+                )
+
+
+class EnvioRecibidosViewSet(viewsets.ModelViewSet):
+    """
+    Lista/consulta envíos en progreso (confirmado=False) del usuario autenticado.
+    """
+    queryset = Envio.objects.all().prefetch_related('detalles')
+    serializer_class = EnvioSerializerAnidado
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['confirmado', 'bodega_origen', 'bodega_destino', 'usuario']
+
+    def get_queryset(self):
+        user = self.request.user
+        return (Envio.objects
+                .select_related('bodega_origen', 'bodega_destino', 'usuario')
+                .filter(bodega_destino__in=user.bodegas.all())
+                )
+
 
 class EnvioDetalleViewSet(viewsets.ModelViewSet):
     queryset = EnvioDetalle.objects.all()
@@ -378,6 +451,8 @@ class BodegaViewSet(viewsets.ModelViewSet):
     serializer_class = BodegaSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre']
+    filterset_class = BodegaFilter
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()

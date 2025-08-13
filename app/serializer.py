@@ -71,6 +71,14 @@ class FamiliaSerializer(serializers.ModelSerializer):
         model = Familia
         fields = '__all__'
 
+
+    def validate(self, attrs):
+        parent = attrs.get('parent')
+        instance = getattr(self, 'instance', None)
+        if instance and parent and parent.id == instance.id:
+            raise serializers.ValidationError("Una familia no puede ser su propio padre.")
+        return attrs
+
     def get_ruta_completa(self, obj):
         return obj.get_ruta_completa()
 
