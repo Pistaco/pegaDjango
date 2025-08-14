@@ -10,12 +10,6 @@ djangorestframework==3.12.4
 django-cors-headers==3.13.0
 django-filter==21.1
 
-# Celery compatible con Django 3.2
-celery
-django-celery-beat
-redis
-kombu
-billiard
 
 # Environment management
 django-environ==0.9.0

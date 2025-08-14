@@ -2,7 +2,7 @@ from .base import *
 
 print("cargado")
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get("DEBUG", False)
 
 # Hosts permitidos - CRÍTICO para seguridad
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
@@ -10,6 +10,9 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 # CSRF trusted origins para AJAX requests
 CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+
+CORS_ALLOW_CREDENTIALS=True
+CORS_ALLOW_HEADERS="authorization,content-type,x-requested-with"
 # Database configuration
 # Opción A: PostgreSQL en cPanel
 DATABASES = {
