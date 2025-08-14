@@ -1,6 +1,5 @@
 from django.contrib import admin
 from django.contrib.admin import AdminSite
-from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
 from app.models import Producto, Ingreso, Retiro, StockActual, PDFUpload, ExcelUpload, Bodega, Envio, EnvioDetalle, \
     Notificacion, Pendiente, ImportJob, ImportRow
