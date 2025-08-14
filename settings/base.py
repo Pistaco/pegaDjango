@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+from DjangoProject.settings import CORS_ALLOW_ALL_ORIGINS
+
 # Cargar variables de entorno
 load_dotenv()
 
@@ -30,6 +32,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Justo después de SecurityMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -39,6 +42,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 
 ROOT_URLCONF = 'DjangoProject.urls'
 

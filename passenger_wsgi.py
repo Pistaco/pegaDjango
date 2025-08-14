@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 # Configurar rutas del proyecto
-CURRENT_DIR = Path(__file__).resolve().parent
+CURRENT_DIR = Path(__file__).resolve()
 PROJECT_ROOT = CURRENT_DIR
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -16,7 +16,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT.parent))
 
 # Configurar variable de entorno de Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mi_app.settings.production')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
 
 try:
     # Cargar variables de entorno desde .env si existe
