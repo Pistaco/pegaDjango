@@ -46,8 +46,6 @@ INSTALLED_APPS = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         # 'rest_framework.authentication.SessionAuthentication',  # opcional si usas cookies
@@ -60,6 +58,9 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
         'rest_framework.filters.SearchFilter',
     ],
+    "SEARCH_PARAM": "q",
+    'DEFAULT_PAGINATION_CLASS': 'app.pagination.RADefaultPagination',
+    "PAGE_SIZE": 25
 }
 
 MIDDLEWARE = [
@@ -105,7 +106,7 @@ WSGI_APPLICATION = 'DjangoProject.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pega',
+        'NAME': 'pega_prueba_2',
         'USER': 'ignacio',
         'PASSWORD': 'coloma30',
         'HOST': 'localhost',  # o la IP/URL de tu servidor

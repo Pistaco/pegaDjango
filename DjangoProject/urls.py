@@ -23,7 +23,8 @@ from app.admin import bodeguero_admin_site
 from rest_framework import routers
 from rest_framework.authtoken.views import obtain_auth_token
 
-from app.views import CurrentUserGroupView, PDFUploadView, ExcelUploadView, barcode_image_on_demand, sqr_image_on_demand
+from app.views import CurrentUserGroupView, PDFUploadView, ExcelUploadView, barcode_image_on_demand, \
+        sqr_image_on_demand
 
 urlpatterns = [
         path('admin/', admin.site.urls),
@@ -32,6 +33,7 @@ urlpatterns = [
         path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
         path('api/upload-pdf/', PDFUploadView.as_view(), name='upload_pdf'),
         path("api/upload-excel/", ExcelUploadView.as_view(), name="upload_excel"),
+
         path("api/barcode-image/<int:pk>/", barcode_image_on_demand),
         path("api/sqr-image/<int:pk>/", sqr_image_on_demand),
 
