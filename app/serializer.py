@@ -119,7 +119,7 @@ class RetiroSerializer(serializers.ModelSerializer):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = '__all__'
+        fields = ["username"]
 
 class StockActualSerializer(serializers.ModelSerializer):
     class Meta:
