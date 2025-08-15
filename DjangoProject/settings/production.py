@@ -5,7 +5,11 @@ print("cargado")
 DEBUG = os.environ.get("DEBUG", False)
 
 # Hosts permitidos - CRÍTICO para seguridad
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+
+
+# ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = ["gdia.cl", "www.gdia.cl"]
+
 
 # CSRF trusted origins para AJAX requests
 CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')

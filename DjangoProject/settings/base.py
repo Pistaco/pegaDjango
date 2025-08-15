@@ -2,8 +2,6 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-from DjangoProject.settings import CORS_ALLOW_ALL_ORIGINS
-
 # Cargar variables de entorno
 load_dotenv()
 
