@@ -19,7 +19,6 @@ from django.contrib import admin
 from django.urls import path, include
 
 from DjangoProject import settings
-from app.admin import bodeguero_admin_site
 from rest_framework import routers
 from rest_framework.authtoken.views import obtain_auth_token
 
