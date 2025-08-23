@@ -34,7 +34,9 @@ class PendienteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pendiente
-        fields = ['id', 'producto', 'producto_nombre', 'descripcion', 'completado', 'creado_en']
+        fields = ['id', 'producto', 'producto_nombre', 'descripcion', 'completado', 'creado_en', "bodega"]
+
+
 
 
 class NotificacionSerializer(serializers.ModelSerializer):
