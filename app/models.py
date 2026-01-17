@@ -130,6 +130,7 @@ class Producto(models.Model):
     descripcion = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     precio = models.IntegerField()
+    parte = models.IntegerField(blank=True, null=True)
 
 
 
@@ -200,4 +201,3 @@ class ExcelUpload(models.Model):
             if os.path.isfile(self.archivo.path):
                 os.remove(self.archivo.path)
         super().delete(*args, **kwargs)
-
