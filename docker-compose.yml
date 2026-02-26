@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: pega_prueba_2
+      POSTGRES_USER: ignacio
+      POSTGRES_PASSWORD: coloma30
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      SECRET_KEY: "dev-secret-key"
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      DB_NAME: pega_prueba_2
+      DB_USER: ignacio
+      DB_PASSWORD: coloma30
+      DB_HOST: db
+      DB_PORT: "5432"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

@@ -22,9 +22,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-qe@4y4&1&=3jbs7kyp#5om@i(e2_s(6=$ynf!81nbl4ln2kvlc'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'true').lower() == 'true'
 
-ALLOWED_HOSTS = []
+allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '')
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -46,8 +50,6 @@ INSTALLED_APPS = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         # 'rest_framework.authentication.SessionAuthentication',  # opcional si usas cookies
@@ -60,6 +62,9 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
         'rest_framework.filters.SearchFilter',
     ],
+    "SEARCH_PARAM": "q",
+    'DEFAULT_PAGINATION_CLASS': 'app.pagination.RADefaultPagination',
+    "PAGE_SIZE": 25
 }
 
 MIDDLEWARE = [
@@ -105,11 +110,11 @@ WSGI_APPLICATION = 'DjangoProject.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pega',
-        'USER': 'ignacio',
-        'PASSWORD': 'coloma30',
-        'HOST': 'localhost',  # o la IP/URL de tu servidor
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'pega_prueba_2'),
+        'USER': os.getenv('DB_USER', 'ignacio'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'coloma30'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
