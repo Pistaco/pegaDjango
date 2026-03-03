@@ -1,7 +1,7 @@
 # app/filters.py
 import django_filters
 from django.db.models import Q, Exists, OuterRef
-from .models import StockActual, Bodega, Producto, Familia  # ajusta nombres si difieren
+from .models import StockActual, Bodega, Producto, Gerencia  # ajusta nombres si difieren
 from django_filters import rest_framework as filters
 
 class StockFilter(django_filters.FilterSet):
@@ -28,7 +28,7 @@ class StockFilter(django_filters.FilterSet):
         model = StockActual
         fields = ["bodega", "producto", "cantidad_min", "cantidad_max", "q"]
 
-class FamiliaFilterSet(filters.FilterSet):
+class GerenciaFilterSet(filters.FilterSet):
     # hijos directos
     hijos_de = filters.NumberFilter(method='filter_hijos_de')
     # subárbol de un padre (todos los descendientes)
@@ -43,7 +43,7 @@ class FamiliaFilterSet(filters.FilterSet):
         while frontier:
             visited.update(frontier)
             children = set(
-                Familia.objects
+                Gerencia.objects
                 .filter(padre_id__in=frontier)
                 .values_list('id', flat=True)
             )
@@ -70,7 +70,7 @@ class FamiliaFilterSet(filters.FilterSet):
         return queryset
 
     class Meta:
-        model = Familia
+        model = Gerencia
         fields = ['hijos_de', 'subtree_of', 'include_self']
 
 # filters.py

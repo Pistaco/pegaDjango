@@ -4,19 +4,19 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-class Familia(models.Model):
+class Gerencia(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True, null=True)
     padre = models.ForeignKey(
         'self',
         null=True, blank=True,
         on_delete=models.CASCADE,
-        related_name='subfamilias',
-        help_text='Familia padre en caso de ser subcategoría.'
+        related_name='subgerencias',
+        help_text='Gerencia padre en caso de ser subcategoría.'
     )
     class Meta:
-        verbose_name = 'Familia'
-        verbose_name_plural = 'Familias'
+        verbose_name = 'Gerencia'
+        verbose_name_plural = 'Gerencias'
 
     def __str__(self):
         return self.nombre
@@ -45,11 +45,11 @@ class Producto(models.Model):
     created_at = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     precio = models.IntegerField()
     parte = models.IntegerField(blank=True, null=True)
-    familia = models.ForeignKey(
-        Familia,
+    gerencia = models.ForeignKey(
+        Gerencia,
         on_delete=models.CASCADE,
         related_name='productos',
-        help_text='Familia o subfamilia a la que pertenece el producto.'
+        help_text='Gerencia o subgerencia a la que pertenece el producto.'
     )
 
     def save(self, *args, **kwargs):

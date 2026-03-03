@@ -4,7 +4,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload, EnvioDetalle, Envio, \
-    Bodega, Familia, Notificacion, Pendiente, ImportJob, ImportRow
+    Bodega, Gerencia, Notificacion, Pendiente, ImportJob, ImportRow
 
 User = get_user_model()
 
@@ -33,7 +33,7 @@ class ProductoStockSerializer(serializers.ModelSerializer):
     descripcion = serializers.CharField(source="producto.descripcion", read_only=True)
     precio = serializers.IntegerField(source="producto.precio", read_only=True)
     parte = serializers.IntegerField(source="producto.parte", read_only=True)
-    familia = serializers.CharField(source="producto.familia.nombre", read_only=True)
+    gerencia = serializers.CharField(source="producto.gerencia.nombre", read_only=True)
     cantidad_en_stock = serializers.IntegerField(source="cantidad", read_only=True)
 
     producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
@@ -41,8 +41,8 @@ class ProductoStockSerializer(serializers.ModelSerializer):
     producto_parte = serializers.IntegerField(source="producto.parte", read_only=True)
     producto_descripcion = serializers.CharField(source="producto.descripcion", read_only=True)
     producto_precio = serializers.IntegerField(source="producto.precio", read_only=True)
-    producto_familia = serializers.CharField(source="producto.familia.nombre", read_only=True)
-    producto_familia_id = serializers.IntegerField(source="producto.familia.id", read_only=True)
+    producto_gerencia = serializers.CharField(source="producto.gerencia.nombre", read_only=True)
+    producto_gerencia_id = serializers.IntegerField(source="producto.gerencia.id", read_only=True)
     bodega_nombre = serializers.CharField(source="bodega.nombre", read_only=True)
 
     class Meta:
@@ -55,15 +55,15 @@ class ProductoStockSerializer(serializers.ModelSerializer):
             "descripcion",
             "precio",
             "parte",
-            "familia",
+            "gerencia",
             "cantidad_en_stock",
             "producto_nombre",
             "producto_codigo_barras",
             "producto_parte",
             "producto_descripcion",
             "producto_precio",
-            "producto_familia",
-            "producto_familia_id",
+            "producto_gerencia",
+            "producto_gerencia_id",
             "bodega",
             "bodega_nombre",
             "cantidad",
@@ -110,10 +110,10 @@ class NotificacionSerializer(serializers.ModelSerializer):
 
         return data
 
-class FamiliaSerializer(serializers.ModelSerializer):
+class GerenciaSerializer(serializers.ModelSerializer):
     ruta_completa = serializers.SerializerMethodField()
     class Meta:
-        model = Familia
+        model = Gerencia
         fields = '__all__'
 
 
@@ -121,7 +121,7 @@ class FamiliaSerializer(serializers.ModelSerializer):
         parent = attrs.get('parent')
         instance = getattr(self, 'instance', None)
         if instance and parent and parent.id == instance.id:
-            raise serializers.ValidationError("Una familia no puede ser su propio padre.")
+            raise serializers.ValidationError("Una gerencia no puede ser su propio padre.")
         return attrs
 
     def get_ruta_completa(self, obj):
@@ -465,7 +465,7 @@ class ImportUploadSerializer(serializers.Serializer):
     - file (xlsx/xls/csv)
     """
     bodega = serializers.PrimaryKeyRelatedField(queryset=Bodega.objects.all())
-    familia = serializers.PrimaryKeyRelatedField(queryset=Familia.objects.all())
+    gerencia = serializers.PrimaryKeyRelatedField(queryset=Gerencia.objects.all())
     file = serializers.FileField()
 
     def validate_file(self, f):

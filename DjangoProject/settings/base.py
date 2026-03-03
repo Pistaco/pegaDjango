@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'app',
     'whitenoise.runserver_nostatic',
+    'django_extensions'
 ]
 
 REST_FRAMEWORK = {

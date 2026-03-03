@@ -32,12 +32,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from DjangoProject import settings
-from .filters import StockFilter, FamiliaFilterSet, BodegaFilter
+from .filters import StockFilter, GerenciaFilterSet, BodegaFilter
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload, Envio, EnvioDetalle, \
-    Bodega, Familia, Notificacion, Pendiente, ImportRow, ImportJob
+    Bodega, Gerencia, Notificacion, Pendiente, ImportRow, ImportJob
 from .serializer import CargoSerializer, ProductoSerializer, IngresoSerializer, RetiroSerializer, UsuarioSerializer, \
     StockActualSerializer, ProductoStockSerializer, PDFUploadSerializer, ExcelUploadSerializer, UserSerializer, \
-    EnvioSerializer, EnvioDetalleSerializer, BodegaSerializer, EnvioSerializerAnidado, FamiliaSerializer, \
+    EnvioSerializer, EnvioDetalleSerializer, BodegaSerializer, EnvioSerializerAnidado, GerenciaSerializer, \
     NotificacionSerializer, PendienteSerializer, ProductoInventarioSerializer, ImportRowSerializer, ImportJobSerializer, \
     ImportUploadSerializer
 
@@ -104,12 +104,12 @@ class CargoViewSet(viewsets.ModelViewSet):
     serializer_class = CargoSerializer
 
 
-class FamiliaViewSet(viewsets.ModelViewSet):
-    queryset = Familia.objects.all()
-    serializer_class = FamiliaSerializer
+class GerenciaViewSet(viewsets.ModelViewSet):
+    queryset = Gerencia.objects.all()
+    serializer_class = GerenciaSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['padre']
-    filterset_class = FamiliaFilterSet
+    filterset_class = GerenciaFilterSet
     search_fields = ['nombre']
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -118,7 +118,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     ordering = ['id']
     ordering_fields = ['nombre', 'codigo_barras']
-    filterset_fields = ['codigo_barras', 'nombre', 'id', 'familia']
+    filterset_fields = ['codigo_barras', 'nombre', 'id', 'gerencia']
     search_fields = ['nombre', 'codigo_barras', 'descripcion']
 
 class NotificacionViewSet(viewsets.ModelViewSet):
@@ -680,7 +680,7 @@ class ImportJobViewSet(viewsets.ModelViewSet):
         ser = ImportUploadSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         bodega = ser.validated_data['bodega']
-        familia = ser.validated_data['familia']
+        gerencia = ser.validated_data['gerencia']
         f = ser.validated_data['file']
 
         # Si es Bodeguero, restringir bodega
@@ -757,7 +757,7 @@ class ImportJobViewSet(viewsets.ModelViewSet):
                         codigo = str(codigo)[:20]
                         producto, created = Producto.objects.get_or_create(
                             nombre=nombre,
-                            defaults={'precio': precio_val, 'familia': familia, 'codigo_barras': codigo},
+                            defaults={'precio': precio_val, 'gerencia': gerencia, 'codigo_barras': codigo},
 
                         )
                         if not created:

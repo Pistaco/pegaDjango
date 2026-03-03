@@ -3,7 +3,7 @@ from rest_framework import routers
 from .views import CargoViewSet, ProductoViewSet, IngresoViewSet, RetiroViewSet, UsuarioViewSet, StockViewSet, \
     ProductoStockViewSet, UserViewSet, EnvioViewSet, Envio, EnvioDetalleViewSet, BodegaViewSet, EnvioAnidadoViewSet, \
     StockDeMiBodegaViewSet, ProductosEnMiBodegaViewSet, StockBajoStockViewSet, StockDeMiBodegaBajoStockViewSet, \
-    FamiliaViewSet, NotificacionViewSet, PendienteViewSet, ProductoEnvioViewSet, ProductoViewSetReferenceInput, \
+    GerenciaViewSet, NotificacionViewSet, PendienteViewSet, ProductoEnvioViewSet, ProductoViewSetReferenceInput, \
     BodegaTodasViewSet, ProductoInventarioViewSet, EnvioEnProgresoViewSet, EnvioRecibidosViewSet, ImportJobViewSet, \
     ImportRowViewSet
 
@@ -20,7 +20,7 @@ router.register('productos/mi-bodega', ProductosEnMiBodegaViewSet, basename='pro
 
 router.register(r'productos', ProductoViewSet)
 
-router.register(r'familias', FamiliaViewSet)
+router.register(r'gerencias', GerenciaViewSet)
 router.register(r'ingresos', IngresoViewSet)
 router.register(r'retiros', RetiroViewSet)
 router.register(r'usuarios', UsuarioViewSet)
