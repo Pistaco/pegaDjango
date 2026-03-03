@@ -1,4 +1,7 @@
 from django.contrib.auth.models import User
+from django.db import transaction
+from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload, EnvioDetalle, Envio, \
     Bodega, Familia, Notificacion, Pendiente, ImportJob, ImportRow
@@ -128,6 +131,33 @@ class IngresoSerializer(serializers.ModelSerializer):
         model = Ingreso
         fields = '__all__'
 
+    def create(self, validated_data):
+        producto = validated_data['id_producto']
+        bodega = validated_data['bodega']
+        cantidad_ingreso = validated_data['cantidad']
+
+        if cantidad_ingreso <= 0:
+            raise serializers.ValidationError({"cantidad": "Debe ser mayor a cero."})
+
+        with transaction.atomic():
+            stock = (
+                StockActual.objects
+                .select_for_update()
+                .filter(producto=producto, bodega=bodega)
+                .first()
+            )
+            if stock is None:
+                StockActual.objects.create(
+                    producto=producto,
+                    bodega=bodega,
+                    cantidad=cantidad_ingreso,
+                )
+            else:
+                stock.cantidad += cantidad_ingreso
+                stock.save(update_fields=['cantidad', 'actualizado_en'])
+
+            return super().create(validated_data)
+
 
 class RetiroSerializer(serializers.ModelSerializer):
     class Meta:
@@ -155,6 +185,39 @@ class RetiroSerializer(serializers.ModelSerializer):
             )
 
         return data
+
+    def create(self, validated_data):
+        producto = validated_data['id_producto']
+        bodega = validated_data['bodega']
+        cantidad_retirar = validated_data['cantidad']
+
+        if cantidad_retirar <= 0:
+            raise serializers.ValidationError({"cantidad": "Debe ser mayor a cero."})
+
+        with transaction.atomic():
+            try:
+                stock = (
+                    StockActual.objects
+                    .select_for_update()
+                    .get(producto=producto, bodega=bodega)
+                )
+            except StockActual.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"bodega": "No hay stock de este producto en la bodega seleccionada."}
+                )
+
+            if cantidad_retirar > stock.cantidad:
+                raise serializers.ValidationError(
+                    {"cantidad": "No hay suficiente stock para este retiro."}
+                )
+
+            stock.cantidad -= cantidad_retirar
+            if stock.cantidad == 0:
+                stock.delete()
+            else:
+                stock.save(update_fields=['cantidad', 'actualizado_en'])
+
+            return super().create(validated_data)
 
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -211,40 +274,90 @@ class EnvioSerializerAnidado(serializers.ModelSerializer):
         read_only_fields = ['usuario']
 
     def validate(self, data):
-        # Detectar si se está intentando confirmar
-        confirmar = data.get('confirmado', getattr(self.instance, 'confirmado', False))
         detalles = data.get('detalles', [])
-
-        origen = data.get('origen', getattr(self.instance, 'origen', None))
-
-        if len(detalles) == 0:
+        if self.instance is None and len(detalles) == 0:
             raise serializers.ValidationError(
                 "Necesita al menos un producto en detalles"
             )
 
-        if confirmar and detalles and origen:
-            for detalle in detalles:
-                producto = detalle['producto']
-                cantidad = detalle['cantidad']
-                try:
-                    stock = StockActual.objects.get(bodega=origen, producto=producto)
-                except StockActual.DoesNotExist:
-                    raise serializers.ValidationError(
-                        f"No hay stock registrado para el producto {producto} en la bodega origen."
-                    )
-
-                if stock.cantidad < cantidad:
-                    raise serializers.ValidationError(
-                        f"Stock insuficiente de '{producto}' en la bodega origen. Disponible: {stock.cantidad}, requerido: {cantidad}."
-                    )
-
         return data
+
+    def _obtener_requerimientos_envio(self, envio):
+        return list(
+            envio.detalles
+            .values('producto_id')
+            .annotate(cantidad=Sum('cantidad'))
+            .order_by('producto_id')
+        )
+
+    def _aplicar_movimiento_confirmacion(self, envio):
+        req = self._obtener_requerimientos_envio(envio)
+        if not req:
+            raise serializers.ValidationError(
+                "Necesita al menos un producto en detalles para confirmar el envío."
+            )
+
+        origen_id = envio.bodega_origen_id
+        destino_id = envio.bodega_destino_id
+        ahora = timezone.now()
+
+        requeridas = {item['producto_id']: int(item['cantidad']) for item in req}
+        producto_ids = list(requeridas.keys())
+
+        stock_origen = {
+            s.producto_id: s
+            for s in StockActual.objects.select_for_update().filter(
+                bodega_id=origen_id,
+                producto_id__in=producto_ids,
+            )
+        }
+
+        hay_faltantes = any(
+            stock_origen.get(producto_id) is None or stock_origen[producto_id].cantidad < cantidad_req
+            for producto_id, cantidad_req in requeridas.items()
+        )
+        if hay_faltantes:
+            raise serializers.ValidationError(
+                f"Stock insuficiente en la bodega de origen para uno o más productos del envío {envio.id}."
+            )
+
+        for producto_id, cantidad_req in requeridas.items():
+            row_origen = stock_origen[producto_id]
+            row_origen.cantidad -= cantidad_req
+            row_origen.actualizado_en = ahora
+            row_origen.save(update_fields=['cantidad', 'actualizado_en'])
+
+        stock_destino = {
+            s.producto_id: s
+            for s in StockActual.objects.select_for_update().filter(
+                bodega_id=destino_id,
+                producto_id__in=producto_ids,
+            )
+        }
+        for producto_id, cantidad_req in requeridas.items():
+            row_destino = stock_destino.get(producto_id)
+            if row_destino is None:
+                StockActual.objects.create(
+                    producto_id=producto_id,
+                    bodega_id=destino_id,
+                    cantidad=cantidad_req,
+                    actualizado_en=ahora,
+                )
+                continue
+
+            row_destino.cantidad += cantidad_req
+            row_destino.actualizado_en = ahora
+            row_destino.save(update_fields=['cantidad', 'actualizado_en'])
 
     def create(self, validated_data):
         detalles_data = validated_data.pop('detalles')
-        envio = Envio.objects.create(**validated_data)
-        for detalle_data in detalles_data:
-            EnvioDetalle.objects.create(envio=envio, **detalle_data)
+        with transaction.atomic():
+            envio = Envio.objects.create(**validated_data)
+            for detalle_data in detalles_data:
+                EnvioDetalle.objects.create(envio=envio, **detalle_data)
+
+            if envio.confirmado:
+                self._aplicar_movimiento_confirmacion(envio)
         return envio
 
     def update(self, instance, validated_data):
@@ -255,16 +368,22 @@ class EnvioSerializerAnidado(serializers.ModelSerializer):
         if instance.confirmado:
             raise serializers.ValidationError("No se puede modificar un envío confirmado.")
 
+        was_confirmado = instance.confirmado
         detalles_data = validated_data.pop('detalles', None)
-        instance.bodega_origen = validated_data.get('bodega_origen', instance.bodega_origen)
-        instance.bodega_destino = validated_data.get('bodega_destino', instance.bodega_destino)
-        instance.confirmado = validated_data.get('confirmado', instance.confirmado)
-        instance.save()
 
-        if detalles_data is not None:
-            instance.detalles.all().delete()
-            for detalle_data in detalles_data:
-                EnvioDetalle.objects.create(envio=instance, **detalle_data)
+        with transaction.atomic():
+            instance.bodega_origen = validated_data.get('bodega_origen', instance.bodega_origen)
+            instance.bodega_destino = validated_data.get('bodega_destino', instance.bodega_destino)
+            instance.confirmado = validated_data.get('confirmado', instance.confirmado)
+            instance.save()
+
+            if detalles_data is not None:
+                instance.detalles.all().delete()
+                for detalle_data in detalles_data:
+                    EnvioDetalle.objects.create(envio=instance, **detalle_data)
+
+            if not was_confirmado and instance.confirmado:
+                self._aplicar_movimiento_confirmacion(instance)
 
         return instance
 

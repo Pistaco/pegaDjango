@@ -1,2 +1,1 @@
-from DjangoProject.settings.production import *
-
+"""Django settings package."""

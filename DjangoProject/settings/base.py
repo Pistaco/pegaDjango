@@ -5,10 +5,9 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parents[2]
 
-# SECURITY WARNING: Mantener SECRET_KEY en variables de entorno
-print("cargado0.3")
+# SECURITY WARNING: SECRET_KEY la define cada entorno (dev/prod)
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # Application definition
@@ -29,6 +28,23 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated'
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.OrderingFilter',
+        'rest_framework.filters.SearchFilter',
+    ],
+    "SEARCH_PARAM": "q",
+    'DEFAULT_PAGINATION_CLASS': 'app.pagination.RADefaultPagination',
+    "PAGE_SIZE": 25
+}
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -43,6 +59,8 @@ MIDDLEWARE = [
 
 
 ROOT_URLCONF = 'DjangoProject.urls'
+WSGI_APPLICATION = 'DjangoProject.wsgi.application'
+ASGI_APPLICATION = 'DjangoProject.asgi.application'
 
 # Base templates configuration
 TEMPLATES = [
