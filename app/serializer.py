@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
@@ -6,6 +6,7 @@ from rest_framework import serializers
 from .models import Cargo, Producto, Ingreso, Retiro, Usuario, StockActual, PDFUpload, ExcelUpload, EnvioDetalle, Envio, \
     Bodega, Familia, Notificacion, Pendiente, ImportJob, ImportRow
 
+User = get_user_model()
 
 class CargoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -127,12 +128,38 @@ class FamiliaSerializer(serializers.ModelSerializer):
         return obj.get_ruta_completa()
 
 class IngresoSerializer(serializers.ModelSerializer):
+    # Compatibilidad de payload legado: id_producto/id_usuario.
+    id_producto = serializers.PrimaryKeyRelatedField(
+        source='producto',
+        queryset=Producto.objects.all(),
+        write_only=True,
+        required=False,
+    )
+    id_usuario = serializers.PrimaryKeyRelatedField(
+        source='usuario',
+        queryset=User.objects.all(),
+        write_only=True,
+        required=False,
+    )
+
     class Meta:
         model = Ingreso
-        fields = '__all__'
+        fields = ['id', 'producto', 'usuario', 'bodega', 'cantidad', 'fecha', 'observacion', 'id_producto', 'id_usuario']
+        read_only_fields = ['id', 'fecha']
+        extra_kwargs = {
+            'producto': {'required': False},
+            'usuario': {'required': False},
+        }
+
+    def validate(self, attrs):
+        if 'producto' not in attrs:
+            raise serializers.ValidationError({'producto': 'Este campo es obligatorio.'})
+        if 'usuario' not in attrs:
+            raise serializers.ValidationError({'usuario': 'Este campo es obligatorio.'})
+        return attrs
 
     def create(self, validated_data):
-        producto = validated_data['id_producto']
+        producto = validated_data['producto']
         bodega = validated_data['bodega']
         cantidad_ingreso = validated_data['cantidad']
 
@@ -160,12 +187,36 @@ class IngresoSerializer(serializers.ModelSerializer):
 
 
 class RetiroSerializer(serializers.ModelSerializer):
+    # Compatibilidad de payload legado: id_producto/id_usuario.
+    id_producto = serializers.PrimaryKeyRelatedField(
+        source='producto',
+        queryset=Producto.objects.all(),
+        write_only=True,
+        required=False,
+    )
+    id_usuario = serializers.PrimaryKeyRelatedField(
+        source='usuario',
+        queryset=User.objects.all(),
+        write_only=True,
+        required=False,
+    )
+
     class Meta:
         model = Retiro
-        fields = '__all__'
+        fields = ['id', 'producto', 'usuario', 'bodega', 'cantidad', 'fecha', 'observacion', 'id_producto', 'id_usuario']
+        read_only_fields = ['id', 'fecha']
+        extra_kwargs = {
+            'producto': {'required': False},
+            'usuario': {'required': False},
+        }
 
     def validate(self, data):
-        producto = data['id_producto']
+        if 'producto' not in data:
+            raise serializers.ValidationError({'producto': 'Este campo es obligatorio.'})
+        if 'usuario' not in data:
+            raise serializers.ValidationError({'usuario': 'Este campo es obligatorio.'})
+
+        producto = data['producto']
         bodega = data['bodega']
         cantidad_retirar = data['cantidad']
 
@@ -187,7 +238,7 @@ class RetiroSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        producto = validated_data['id_producto']
+        producto = validated_data['producto']
         bodega = validated_data['bodega']
         cantidad_retirar = validated_data['cantidad']
 
@@ -222,7 +273,7 @@ class RetiroSerializer(serializers.ModelSerializer):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ["username"]
+        fields = '__all__'
 
 class StockActualSerializer(serializers.ModelSerializer):
     class Meta:

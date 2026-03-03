@@ -11,7 +11,7 @@ import camelot
 import pandas as pd
 import qrcode
 from barcode.writer import ImageWriter
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db.models import Exists, OuterRef, Sum, F
 from django.db.models.expressions import Subquery, Value
 from django.db.models.fields import IntegerField, CharField
@@ -40,6 +40,8 @@ from .serializer import CargoSerializer, ProductoSerializer, IngresoSerializer, 
     EnvioSerializer, EnvioDetalleSerializer, BodegaSerializer, EnvioSerializerAnidado, FamiliaSerializer, \
     NotificacionSerializer, PendienteSerializer, ProductoInventarioSerializer, ImportRowSerializer, ImportJobSerializer, \
     ImportUploadSerializer
+
+User = get_user_model()
 
 
 # permissions.py
@@ -661,8 +663,7 @@ class ImportJobViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if user_is_bodeguero(user):
-            # Solo trabajos en bodegas a las que tiene acceso:
-            # Si tienes una tabla bodega_usuarios, filtra por ella. Aquí asumimos relación directa.
+            # Solo trabajos asociados al usuario autenticado.
             return qs.filter(usuario=user)
         return qs
 

@@ -2,7 +2,6 @@
 import django_filters
 from django.db.models import Q, Exists, OuterRef
 from .models import StockActual, Bodega, Producto, Familia  # ajusta nombres si difieren
-from django.db import connection
 from django_filters import rest_framework as filters
 
 class StockFilter(django_filters.FilterSet):
@@ -29,11 +28,6 @@ class StockFilter(django_filters.FilterSet):
         model = StockActual
         fields = ["bodega", "producto", "cantidad_min", "cantidad_max", "q"]
 
-# app/filters.py
-
-# Ajusta el nombre de la tabla y de las columnas si difieren en tu esquema real.
-# Asumo una tabla 'familia' con columnas: id, nombre, padre_id (FK a familia.id).
-
 class FamiliaFilterSet(filters.FilterSet):
     # hijos directos
     hijos_de = filters.NumberFilter(method='filter_hijos_de')
@@ -42,35 +36,23 @@ class FamiliaFilterSet(filters.FilterSet):
     include_self = filters.BooleanFilter(method='filter_include_self', label='Include self')
 
     def _get_subtree_ids(self, parent_id: int, include_self: bool = False):
-        """
-        Obtiene IDs del subárbol vía CTE recursivo en PostgreSQL.
-        No requiere cambios en el modelo ni en el serializer.
-        """
-        with connection.cursor() as cur:
-            cur.execute(
-                """
-                WITH RECURSIVE subarbol AS (
-                    SELECT id, padre_id
-                    FROM familia
-                    WHERE id = %s
-                    UNION ALL
-                    SELECT f.id, f.padre_id
-                    FROM familia f
-                    JOIN subarbol s ON f.padre_id = s.id
-                )
-                SELECT id FROM subarbol;
-                """,
-                [parent_id],
-            )
-            ids = [row[0] for row in cur.fetchall()]
+        # Recorrido iterativo con ORM para no depender de nombres físicos de tabla.
+        visited = set()
+        frontier = {int(parent_id)}
 
-        if not include_self:
-            # Excluir el propio padre
-            try:
-                ids.remove(parent_id)
-            except ValueError:
-                pass
-        return ids
+        while frontier:
+            visited.update(frontier)
+            children = set(
+                Familia.objects
+                .filter(padre_id__in=frontier)
+                .values_list('id', flat=True)
+            )
+            frontier = children - visited
+
+        if not include_self and parent_id in visited:
+            visited.remove(parent_id)
+
+        return list(visited)
 
     def filter_hijos_de(self, queryset, name, value):
         # Solo hijos directos: padre_id = value
@@ -88,7 +70,6 @@ class FamiliaFilterSet(filters.FilterSet):
         return queryset
 
     class Meta:
-        # Ajusta 'Familia' al nombre real de tu modelo
         model = Familia
         fields = ['hijos_de', 'subtree_of', 'include_self']
 

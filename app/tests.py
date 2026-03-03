@@ -1,10 +1,12 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import serializers
 
 from app.models import Bodega, Envio, EnvioDetalle, Familia, Producto, StockActual, Notificacion
 from app.models import Ingreso, Retiro
 from app.serializer import EnvioSerializerAnidado, IngresoSerializer, RetiroSerializer
+
+User = get_user_model()
 
 
 class EnvioConfirmacionTests(TestCase):
@@ -91,8 +93,8 @@ class MovimientosStockTests(TestCase):
 
     def test_crear_ingreso_aumenta_stock(self):
         serializer = IngresoSerializer(data={
-            'id_producto': self.producto.id,
-            'id_usuario': self.user.id,
+            'producto': self.producto.id,
+            'usuario': self.user.id,
             'bodega': self.bodega.id,
             'cantidad': 7,
             'observacion': 'Ingreso test',
@@ -107,8 +109,8 @@ class MovimientosStockTests(TestCase):
     def test_crear_retiro_disminuye_stock(self):
         StockActual.objects.create(producto=self.producto, bodega=self.bodega, cantidad=10)
         serializer = RetiroSerializer(data={
-            'id_producto': self.producto.id,
-            'id_usuario': self.user.id,
+            'producto': self.producto.id,
+            'usuario': self.user.id,
             'bodega': self.bodega.id,
             'cantidad': 4,
             'observacion': 'Retiro test',
@@ -123,8 +125,8 @@ class MovimientosStockTests(TestCase):
     def test_crear_retiro_con_stock_insuficiente_falla(self):
         StockActual.objects.create(producto=self.producto, bodega=self.bodega, cantidad=2)
         serializer = RetiroSerializer(data={
-            'id_producto': self.producto.id,
-            'id_usuario': self.user.id,
+            'producto': self.producto.id,
+            'usuario': self.user.id,
             'bodega': self.bodega.id,
             'cantidad': 5,
             'observacion': 'Retiro inválido',
@@ -138,8 +140,8 @@ class MovimientosStockTests(TestCase):
     def test_crear_retiro_elimina_stock_si_queda_en_cero(self):
         StockActual.objects.create(producto=self.producto, bodega=self.bodega, cantidad=4)
         serializer = RetiroSerializer(data={
-            'id_producto': self.producto.id,
-            'id_usuario': self.user.id,
+            'producto': self.producto.id,
+            'usuario': self.user.id,
             'bodega': self.bodega.id,
             'cantidad': 4,
             'observacion': 'Retiro total',
