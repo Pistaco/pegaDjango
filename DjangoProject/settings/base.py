@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 # Cargar variables de entorno
@@ -106,3 +107,34 @@ USE_TZ = True
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+def env_list(*names: str, default: str = '') -> list[str]:
+    """Read first non-empty env var from names and split by comma."""
+    raw = ''
+    for name in names:
+        raw = os.getenv(name, '').strip()
+        if raw:
+            break
+
+    if not raw:
+        raw = default
+
+    return [item.strip() for item in raw.split(',') if item.strip()]
+
+
+def normalize_hosts(values: list[str]) -> list[str]:
+    """Allow hostnames or URLs in env and return Django-compatible hosts."""
+    result: list[str] = []
+    for value in values:
+        candidate = value.strip()
+        if not candidate:
+            continue
+        if '://' in candidate:
+            parsed = urlparse(candidate)
+            host = parsed.hostname
+            if host:
+                result.append(host)
+        else:
+            result.append(candidate.split(':', 1)[0].strip())
+    return result

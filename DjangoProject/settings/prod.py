@@ -13,14 +13,20 @@ def env_required(name: str) -> str:
 SECRET_KEY = env_required('SECRET_KEY')
 DEBUG = False
 
-allowed_hosts_env = env_required('DJANGO_ALLOWED_HOSTS')
-ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
+allowed_hosts_values = env_list('DJANGO_ALLOWED_HOSTS', 'ALLOWED_HOSTS')
+if not allowed_hosts_values:
+    raise RuntimeError('Missing required environment variable: DJANGO_ALLOWED_HOSTS or ALLOWED_HOSTS')
+ALLOWED_HOSTS = normalize_hosts(allowed_hosts_values)
 
-cors_allowed_origins_env = os.getenv('CORS_ALLOWED_ORIGINS', '')
-if cors_allowed_origins_env:
-    CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_allowed_origins_env.split(',') if o.strip()]
+cors_allowed_origins = env_list('CORS_ALLOWED_ORIGINS')
+if cors_allowed_origins:
+    CORS_ALLOWED_ORIGINS = cors_allowed_origins
 else:
     CORS_ALLOW_ALL_ORIGINS = False
+
+csrf_trusted_origins = env_list('CSRF_TRUSTED_ORIGINS')
+if csrf_trusted_origins:
+    CSRF_TRUSTED_ORIGINS = csrf_trusted_origins
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -66,4 +72,3 @@ if os.getenv('REDIS_URL'):
             }
         }
     }
-
