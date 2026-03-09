@@ -31,4 +31,4 @@ tabulate
 tzdata
 dotenv
 python-dotenv
-whitenoise
+django-extensions

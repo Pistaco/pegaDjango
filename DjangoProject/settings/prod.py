@@ -22,7 +22,7 @@ cors_allowed_origins = env_list('CORS_ALLOWED_ORIGINS')
 if cors_allowed_origins:
     CORS_ALLOWED_ORIGINS = cors_allowed_origins
 else:
-    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOW_ALL_ORIGINS = True
 
 csrf_trusted_origins = env_list('CSRF_TRUSTED_ORIGINS')
 if csrf_trusted_origins:
