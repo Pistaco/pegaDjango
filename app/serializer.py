@@ -82,6 +82,10 @@ class PendienteSerializer(serializers.ModelSerializer):
 
 
 class NotificacionSerializer(serializers.ModelSerializer):
+    envio_confirmado = serializers.BooleanField(source='envio.confirmado', read_only=True)
+    stock_producto_nombre = serializers.CharField(source='stock.producto.nombre', read_only=True)
+    stock_producto_id = serializers.IntegerField(source='stock.producto.id', read_only=True)
+
     class Meta:
         model = Notificacion
         fields = '__all__'
