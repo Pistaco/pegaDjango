@@ -47,6 +47,8 @@ class Producto(models.Model):
     parte = models.IntegerField(blank=True, null=True)
     gerencia = models.ForeignKey(
         Gerencia,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name='productos',
         help_text='Gerencia o subgerencia a la que pertenece el producto.'
