@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Configuración de rutas
-DEST_DIR="$HOME/WebStorm/pegaReact/copiaBackend"
+DEST_DIR="/home/ignacio/WebstormProjects/pegaReact/copiaBackend"
 REPO_DIR="$(git rev-parse --show-toplevel)"
 
 echo "[post-commit-local] Sincronizando con $DEST_DIR..."
