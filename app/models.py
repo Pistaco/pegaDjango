@@ -54,9 +54,17 @@ class Producto(models.Model):
         help_text='Gerencia o subgerencia a la que pertenece el producto.'
     )
 
+    @staticmethod
+    def generar_codigo_unico():
+        """Genera un código de barras único de hasta 20 caracteres."""
+        while True:
+            nuevo_codigo = str(uuid.uuid4())[:20]
+            if not Producto.objects.filter(codigo_barras=nuevo_codigo).exists():
+                return nuevo_codigo
+
     def save(self, *args, **kwargs):
         if not self.codigo_barras:
-            self.codigo_barras = str(uuid.uuid4())[:20]
+            self.codigo_barras = self.generar_codigo_unico()
         super().save(*args, **kwargs)
 
     def get_total(self):

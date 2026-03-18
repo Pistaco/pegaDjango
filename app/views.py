@@ -121,6 +121,12 @@ class ProductoViewSet(viewsets.ModelViewSet):
     filterset_fields = ['codigo_barras', 'nombre', 'id', 'gerencia']
     search_fields = ['nombre', 'codigo_barras', 'descripcion']
 
+    @action(detail=False, methods=['get'])
+    def generar_codigo(self, request):
+        """Endpoint para obtener un código de barras único."""
+        codigo = Producto.generar_codigo_unico()
+        return Response({"codigo_barras": codigo})
+
 class NotificacionViewSet(viewsets.ModelViewSet):
     serializer_class = NotificacionSerializer
     permission_classes = [IsAuthenticated]
@@ -510,7 +516,7 @@ class PDFUploadView(APIView):
                         producto = Producto.objects.create(
                             nombre=row_dict.get("DETALLE"),
                             descripcion=row_dict.get("Descripción"),
-                            codigo_barras=row_dict.get("Código de barras") or str(uuid.uuid4())[:20]
+                            codigo_barras=row_dict.get("Código de barras") or Producto.generar_codigo_unico()
                         )
                         stock = StockActual.objects.get(producto_id=producto)
                         stock.cantidad = int(row_dict.get("CANTIDAD", 0))
@@ -549,7 +555,7 @@ class ExcelUploadView(APIView):
                 producto = Producto.objects.create(
                     nombre=row_data.get("Nombre"),
                     descripcion=row_data.get("Descripción", ""),
-                    codigo_barras=row_data.get("Código de barras") or str(uuid.uuid4())[:20],
+                    codigo_barras=row_data.get("Código de barras") or Producto.generar_codigo_unico(),
                     centro_costo=row_data.get("Centro Costo")
                 )
 
@@ -753,8 +759,7 @@ class ImportJobViewSet(viewsets.ModelViewSet):
                             raise ValueError('Valores negativos no permitidos')
 
                         # Producto por nombre (puedes cambiar a case-insensitive unique si quieres)
-                        codigo = uuid.uuid4()
-                        codigo = str(codigo)[:20]
+                        codigo = Producto.generar_codigo_unico()
                         producto, created = Producto.objects.get_or_create(
                             nombre=nombre,
                             defaults={'precio': precio_val, 'gerencia': gerencia, 'codigo_barras': codigo},
