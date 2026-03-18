@@ -30,7 +30,6 @@ INSTALLED_APPS = [
     'django_extensions'
 ]
 
-# .
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
